@@ -1,0 +1,44 @@
+name: Feature request
+description: Suggest an idea or improvement
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: checkboxes
+    attributes:
+      label: Preflight
+      options:
+        - label: I searched existing issues
+          required: true
+  - type: textarea
+    attributes:
+      label: Problem statement
+      description: What problem are you trying to solve.
+      placeholder: I want to ...
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Proposed solution
+      description: Describe the change you would like.
+      placeholder: Add ...
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Use cases
+      description: Describe real workflows this would improve.
+      placeholder: I use this when ...
+  - type: textarea
+    attributes:
+      label: Acceptance criteria
+      description: What does success look like.
+      placeholder: This is done when ...
+  - type: textarea
+    attributes:
+      label: Alternatives
+      description: Any alternative approaches or workarounds.
+      placeholder: Another option is ...
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: Screenshots, links, or related issues.

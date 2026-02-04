@@ -1,0 +1,17 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/iamironz/android-nvim-plugin/blob/main/README.md
+    about: Read the README and quick start
+  - name: Contributing
+    url: https://github.com/iamironz/android-nvim-plugin/blob/main/CONTRIBUTING.md
+    about: Contribution workflow and expectations
+  - name: Troubleshooting
+    url: https://github.com/iamironz/android-nvim-plugin/blob/main/docs/troubleshooting.md
+    about: Common fixes and environment setup
+  - name: Triage policy
+    url: https://github.com/iamironz/android-nvim-plugin/blob/main/docs/triage.md
+    about: How issues are labeled and handled
+  - name: Security policy
+    url: https://github.com/iamironz/android-nvim-plugin/blob/main/.github/SECURITY.md
+    about: Report vulnerabilities responsibly

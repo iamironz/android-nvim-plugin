@@ -1,0 +1,46 @@
+labels:
+  - name: bug
+    color: d73a4a
+    description: Something is not working
+  - name: enhancement
+    color: a2eeef
+    description: New feature or request
+  - name: documentation
+    color: 0075ca
+    description: Documentation updates
+  - name: security
+    color: b60205
+    description: Security related issues
+  - name: question
+    color: d876e3
+    description: Further information requested
+  - name: help wanted
+    color: 008672
+    description: Extra attention is needed
+  - name: good first issue
+    color: 7057ff
+    description: Good for newcomers
+  - name: tests
+    color: cfd3d7
+    description: Test coverage or fixes
+  - name: refactor
+    color: cfd3d7
+    description: Refactoring or cleanup
+  - name: chore
+    color: cfd3d7
+    description: Maintenance tasks
+  - name: triage/needs-info
+    color: fbca04
+    description: Needs more information from reporter
+  - name: triage/confirmed
+    color: 0e8a16
+    description: Repro confirmed by maintainers
+  - name: triage/blocked
+    color: d93f0b
+    description: Blocked on external dependency or upstream
+  - name: triage/duplicate
+    color: cfd3d7
+    description: Duplicate of an existing issue
+  - name: triage/wontfix
+    color: 5319e7
+    description: Will not be addressed

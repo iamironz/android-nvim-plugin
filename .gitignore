@@ -1,0 +1,16 @@
+# OS
+.DS_Store
+
+# Neovim
+*.swp
+*.swo
+*.swn
+*.swm
+*~
+
+# Editors
+.vscode/
+.idea/
+
+# Logs
+*.log
