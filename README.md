@@ -1,6 +1,6 @@
 # android-nvim-plugin
 
-[![CI](https://github.com/iamironz/android-nvim-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/iamironz/android-nvim-plugin/actions/workflows/ci.yml)
+[![Tests](https://github.com/iamironz/android-nvim-plugin/actions/workflows/tests.yml/badge.svg)](https://github.com/iamironz/android-nvim-plugin/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2ea043.svg)](LICENSE)
 [![Neovim](https://img.shields.io/badge/neovim-0.9%2B-57A143?logo=neovim&logoColor=white)](https://neovim.io)
 
@@ -31,16 +31,26 @@ bag of problems with a better keyboard.
 
 ## Quick start
 
-```lua
-require("android").setup()
-```
+1. Install with lazy.nvim:
 
-Run `:AndroidMenu` to open the main menu.
+  ```lua
+  {
+    "iamironz/android-nvim-plugin",
+    lazy = false,
+    config = function()
+      require("android").setup()
+    end,
+  }
+  ```
 
-Menus now open a hub list of sections, and AndroidMenu shows a summary panel at the top.
-Typing in the hub opens the search overlay with your text, and search is available only after typing.
-Press Esc to return to the hub from the actions picker, and `q` closes it.
-When a submenu opens from the hub shortcuts, Esc returns to the previous hub.
+2. Other managers: see [Install](#install) for packer.nvim, pckr.nvim,
+   mini.deps, rocks.nvim, vim-plug, dein.vim, paq-nvim, and vim.pack.
+   After installing, call `require("android").setup()`.
+
+3. Run `:AndroidMenu` to open the main menu. Defaults should work when the Android
+   SDK is discoverable via `ANDROID_SDK_ROOT`, `ANDROID_HOME`, or `local.properties`.
+   See [docs/commands.md](docs/commands.md) for navigation and keymap details, and
+   [docs/configuration.md](docs/configuration.md) for overrides.
 
 ## Features
 
@@ -202,7 +212,7 @@ require("android").setup({
 })
 ```
 
-See `docs/configuration.md` for the full reference.
+See [docs/configuration.md](docs/configuration.md) for the full reference.
 
 <details>
 <summary>Advanced configuration notes</summary>
@@ -235,7 +245,7 @@ targets in the order configured by `run.run_all`.
 Gradle task configs are hidden from the main run config list and surfaced via
 the Gradle tasks menu.
 
-See `docs/run-configs.md` for schema and examples.
+See [docs/run-configs.md](docs/run-configs.md) for schema and examples.
 
 ## Commands
 
@@ -307,19 +317,19 @@ Planned items are based on the 2026-02-01 feature gaps design notes.
 
 ## Docs
 
-- `docs/configuration.md`
-- `docs/run-configs.md`
-- `docs/commands.md`
-- `docs/troubleshooting.md`
-- `docs/development.md`
-- `docs/release.md`
-- `docs/triage.md`
-- `CHANGELOG.md`
+- [docs/configuration.md](docs/configuration.md)
+- [docs/run-configs.md](docs/run-configs.md)
+- [docs/commands.md](docs/commands.md)
+- [docs/troubleshooting.md](docs/troubleshooting.md)
+- [docs/development.md](docs/development.md)
+- [docs/release.md](docs/release.md)
+- [docs/triage.md](docs/triage.md)
+- [CHANGELOG.md](CHANGELOG.md)
 
 <details>
 <summary>Troubleshooting</summary>
 
-See `docs/troubleshooting.md` for common issues and fixes.
+See [docs/troubleshooting.md](docs/troubleshooting.md) for common issues and fixes.
 
 </details>
 
@@ -335,7 +345,7 @@ See `docs/troubleshooting.md` for common issues and fixes.
 
 ## Contributing
 
-See `CONTRIBUTING.md`.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
@@ -344,12 +354,12 @@ MIT
 <details>
 <summary>Release checklist</summary>
 
-- Update `CHANGELOG.md`
+- Update [CHANGELOG.md](CHANGELOG.md)
 - Run `./scripts/run-tests.sh`
 - Verify CI is green
 - Verify README and docs match current behavior
 - Tag and publish the release
-- Follow `docs/release.md` for the full checklist
+- Follow [docs/release.md](docs/release.md) for the full checklist
 
 </details>
 
@@ -359,7 +369,7 @@ MIT
 - Verify README links resolve
 - Confirm setup and config snippets match current API
 - Check docs pages for stale option names
-- Ensure run config examples match docs/run-configs
+- Ensure run config examples match [docs/run-configs.md](docs/run-configs.md)
 - Run `./scripts/run-tests.sh` for a quick sanity check
 
 </details>

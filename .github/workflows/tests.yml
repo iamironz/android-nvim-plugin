@@ -1,15 +1,17 @@
-name: CI
+name: Tests
 
 on:
   workflow_dispatch:
   push:
-  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 2 * * *"
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: tests-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
