@@ -52,24 +52,37 @@ bag of problems with a better keyboard.
 3. **Open the menu.** Run `:AndroidMenu` to open the main menu. Defaults should work
    when the Android SDK is discoverable via `ANDROID_SDK_ROOT`, `ANDROID_HOME`, or
    `local.properties`. See [docs/commands.md](docs/commands.md) for navigation and
-   keymap details, and [docs/configuration.md](docs/configuration.md) for overrides.
+   keymap details, [docs/configuration.md](docs/configuration.md) for overrides, and
+   [docs/troubleshooting.md#sdk-not-found](docs/troubleshooting.md#sdk-not-found) if
+   discovery fails.
 
 ## Features
 
 - **Hub menus.** Summary panel, type-to-search, actions picker, Telescope support
-  with vim.ui fallback, and Esc back navigation.
+  with vim.ui fallback, and Esc back navigation. See
+  [docs/commands.md#hub-navigation](docs/commands.md#hub-navigation) and
+  [docs/troubleshooting.md#telescope-missing](docs/troubleshooting.md#telescope-missing).
 - **Build and deploy.** Saved module and variant, prompt builds, Gradle tasks, clean,
   and a build output panel with filter plus quickfix integration for Kotlin and Java.
+  See [docs/commands.md#build-behavior](docs/commands.md#build-behavior).
 - **Devices and apps.** Pick adb device or AVD, start or stop emulator, create AVD
-  from system images, install APKs, clear data, uninstall.
+  from system images, install APKs, clear data, uninstall. See
+  [docs/commands.md#androidmenu-items](docs/commands.md#androidmenu-items).
 - **Logcat panel.** Package, filter, and level controls, regex and term filters,
   pause and resume, restart, reconnect backoff, stack trace navigation, highlights.
+  See [docs/commands.md#logcat-controls](docs/commands.md#logcat-controls).
 - **Run configs.** Android modules, iOS schemes, JVM run tasks, Gradle task entry,
-  and JSON shell configs, plus Run All ordered by `run.run_all` settings.
+  and JSON shell configs, plus Run All ordered by `run.run_all` settings. See
+  [docs/run-configs.md](docs/run-configs.md) and
+  [docs/run-configs.md#run-all](docs/run-configs.md#run-all).
 - **Workspace detection.** Gradle, KMP, and iOS, SDK discovery from config, env,
-  and local.properties, per workspace saved defaults, and health checks.
+  and local.properties, per workspace saved defaults, and health checks. See
+  [docs/configuration.md](docs/configuration.md),
+  [docs/commands.md#diagnostics](docs/commands.md#diagnostics), and
+  [docs/troubleshooting.md#health-checks](docs/troubleshooting.md#health-checks).
 - **Feature parity.** Table below covers logcat, stack traces, build quickfix,
-  Gradle tasks, device app management, and planned LSP sync.
+  Gradle tasks, device app management, and planned LSP sync. See
+  [Feature parity](#feature-parity-android-studio).
 
 ## Install
 
@@ -231,7 +244,8 @@ See [docs/configuration.md](docs/configuration.md) for the full reference.
 ## Run configs
 
 Run configs are loaded from `run.config_path` in JSON. If the file is missing,
-only built-in configs are used.
+only built-in configs are used. See [docs/configuration.md#run](docs/configuration.md#run)
+for overrides.
 
 Built-in providers are detected in this order:
 
