@@ -56,20 +56,20 @@ bag of problems with a better keyboard.
 
 ## Features
 
-- Hub menus. Summary panel, type-to-search, actions picker, Telescope support with
-  vim.ui fallback, and Esc back navigation.
-- Build and deploy. Saved module and variant, prompt builds, Gradle tasks, clean,
+- **Hub menus.** Summary panel, type-to-search, actions picker, Telescope support
+  with vim.ui fallback, and Esc back navigation.
+- **Build and deploy.** Saved module and variant, prompt builds, Gradle tasks, clean,
   and a build output panel with filter plus quickfix integration for Kotlin and Java.
-- Devices and apps. Pick adb device or AVD, start or stop emulator, create AVD from
-  system images, install APKs, clear data, uninstall.
-- Logcat panel. Package, filter, and level controls, regex and term filters, pause
-  and resume, restart, reconnect backoff, stack trace navigation, highlights.
-- Run configs. Android modules, iOS schemes, JVM run tasks, Gradle task entry, and
-  JSON shell configs, plus Run All ordered by `run.run_all` settings.
-- Workspace detection. Gradle, KMP, and iOS, SDK discovery from config, env, and
-  local.properties, per workspace saved defaults, and health checks.
-- Feature parity. Table below covers logcat, stack traces, build quickfix, Gradle
-  tasks, device app management, and planned LSP sync.
+- **Devices and apps.** Pick adb device or AVD, start or stop emulator, create AVD
+  from system images, install APKs, clear data, uninstall.
+- **Logcat panel.** Package, filter, and level controls, regex and term filters,
+  pause and resume, restart, reconnect backoff, stack trace navigation, highlights.
+- **Run configs.** Android modules, iOS schemes, JVM run tasks, Gradle task entry,
+  and JSON shell configs, plus Run All ordered by `run.run_all` settings.
+- **Workspace detection.** Gradle, KMP, and iOS, SDK discovery from config, env,
+  and local.properties, per workspace saved defaults, and health checks.
+- **Feature parity.** Table below covers logcat, stack traces, build quickfix,
+  Gradle tasks, device app management, and planned LSP sync.
 
 ## Install
 
