@@ -1,11 +1,11 @@
 # android-nvim-plugin
 
 [![CI](https://github.com/iamironz/android-nvim-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/iamironz/android-nvim-plugin/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/github/license/iamironz/android-nvim-plugin.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-2ea043.svg)](LICENSE)
 [![Neovim](https://img.shields.io/badge/neovim-0.9%2B-57A143?logo=neovim&logoColor=white)](https://neovim.io)
 
-Neovim Android and mobile workflows, including build, run, logcat, devices,
-and Gradle tasks.
+Neovim plugin for Android and mobile development workflows: build, run, logcat,
+device management, and Gradle tasks.
 
 I built this after one too many Android Studio updates traded stability for a
 fresh pile of features I did not ask for. Open a few projects and the laptop
