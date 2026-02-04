@@ -19,6 +19,8 @@ the essentials close and the workflow honest inside Neovim. It is also buggy
 and probably leaks memory in its own charming way. Think of it as a lighter
 bag of problems with a better keyboard.
 
+![Android Neovim workflow demo](docs/images/android-nvim-plugin-demo.jpg)
+
 ## Compatibility
 
 | Area | Support | Notes |
