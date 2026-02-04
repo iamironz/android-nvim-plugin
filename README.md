@@ -33,7 +33,7 @@ bag of problems with a better keyboard.
 
 ## Quick start
 
-1. Install with lazy.nvim:
+1. **Install with lazy.nvim.**
 
   ```lua
   {
@@ -45,31 +45,31 @@ bag of problems with a better keyboard.
   }
   ```
 
-2. Other managers: see [Install](#install) for packer.nvim, pckr.nvim,
+2. **Other managers.** See [Install](#install) for packer.nvim, pckr.nvim,
    mini.deps, rocks.nvim, vim-plug, dein.vim, paq-nvim, and vim.pack.
    After installing, call `require("android").setup()`.
 
-3. Run `:AndroidMenu` to open the main menu. Defaults should work when the Android
-   SDK is discoverable via `ANDROID_SDK_ROOT`, `ANDROID_HOME`, or `local.properties`.
-   See [docs/commands.md](docs/commands.md) for navigation and keymap details, and
-   [docs/configuration.md](docs/configuration.md) for overrides.
+3. **Open the menu.** Run `:AndroidMenu` to open the main menu. Defaults should work
+   when the Android SDK is discoverable via `ANDROID_SDK_ROOT`, `ANDROID_HOME`, or
+   `local.properties`. See [docs/commands.md](docs/commands.md) for navigation and
+   keymap details, and [docs/configuration.md](docs/configuration.md) for overrides.
 
 ## Features
 
-- Hub-based menus with summary panel, type-to-search, actions picker, Telescope support
-  with vim.ui fallback, and Esc back navigation.
-- Build and deploy with saved module and variant, prompt builds, Gradle tasks, clean,
+- Hub menus. Summary panel, type-to-search, actions picker, Telescope support with
+  vim.ui fallback, and Esc back navigation.
+- Build and deploy. Saved module and variant, prompt builds, Gradle tasks, clean,
   and a build output panel with filter plus quickfix integration for Kotlin and Java.
-- Devices and apps: pick adb device or AVD, start or stop emulator, create AVD from
+- Devices and apps. Pick adb device or AVD, start or stop emulator, create AVD from
   system images, install APKs, clear data, uninstall.
-- Logcat panel with package, filter, and level controls, regex and term filters,
-  pause and resume, restart, reconnect backoff, stack trace navigation, highlights.
-- Run configs from Android modules, iOS schemes, JVM run tasks, Gradle task entry,
-  and JSON shell configs, plus Run All ordered by `run.run_all` settings.
-- Workspace detection for Gradle, KMP, and iOS, SDK discovery from config, env,
-  and local.properties, per workspace saved defaults, and health checks.
-- Feature parity table with Android Studio below covering logcat, stack traces,
-  build quickfix, Gradle tasks, device app management, and planned LSP sync.
+- Logcat panel. Package, filter, and level controls, regex and term filters, pause
+  and resume, restart, reconnect backoff, stack trace navigation, highlights.
+- Run configs. Android modules, iOS schemes, JVM run tasks, Gradle task entry, and
+  JSON shell configs, plus Run All ordered by `run.run_all` settings.
+- Workspace detection. Gradle, KMP, and iOS, SDK discovery from config, env, and
+  local.properties, per workspace saved defaults, and health checks.
+- Feature parity. Table below covers logcat, stack traces, build quickfix, Gradle
+  tasks, device app management, and planned LSP sync.
 
 ## Install
 
