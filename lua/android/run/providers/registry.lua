@@ -23,11 +23,12 @@ end
 function M.list(workspace, state, opts)
   local options = opts or {}
   local providers = options.providers or {}
+  local detect_opts = options.detect_opts or {}
   local configs = {}
 
   for index, provider in ipairs(providers) do
     if provider and type(provider.detect) == "function" then
-      local list = provider.detect(workspace, state) or {}
+      local list = provider.detect(workspace, state, detect_opts) or {}
       for _, config in ipairs(list) do
         configs[#configs + 1] = apply_provider_defaults(config, provider, index)
       end

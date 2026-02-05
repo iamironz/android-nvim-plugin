@@ -9,6 +9,7 @@ local gradle_cache = require("android.gradle.cache")
 local gradle_variants = require("android.gradle.variants")
 local gradle_workspace = require("android.gradle.workspace")
 local runner_module = require("android.command.runner")
+local jobs = require("android.command.jobs")
 
 local cache = gradle_cache.persistent()
 
@@ -119,6 +120,29 @@ function M.run_gradle(root, extra_args, runner)
   return exec_runner.run(args, { cwd = root })
 end
 
+function M.run_gradle_async(root, extra_args, opts)
+  local options = opts or {}
+  if not is_dir(root) then
+    local result = {
+      ok = false,
+      code = 1,
+      stdout = "",
+      stderr = "root directory not found",
+    }
+    if options.on_complete then
+      options.on_complete(result)
+    end
+    return { ok = false, error = "root directory not found" }
+  end
+  local exec_jobs = options.jobs or jobs
+  local args = M.build_command(root, extra_args)
+  return exec_jobs.run(args, {
+    cwd = root,
+    env = options.env,
+    on_complete = options.on_complete,
+  })
+end
+
 function M.fetch_task_lines(root, runner, opts)
   local exec_runner = runner or runner_module.new()
   local options = opts or {}
@@ -132,6 +156,26 @@ function M.fetch_task_lines(root, runner, opts)
     end
     return vim.split(result.stdout or "", "\n", { plain = true })
   end)
+end
+
+function M.fetch_task_lines_async(root, _, on_complete)
+  return M.run_gradle_async(root, { "tasks", "--all" }, {
+    on_complete = function(result)
+      local lines = {}
+      if result and result.ok then
+        lines = vim.split(result.stdout or "", "\n", { plain = true })
+      end
+      if on_complete then
+        on_complete({
+          ok = result and result.ok or false,
+          code = result and result.code or 1,
+          stdout = result and result.stdout or "",
+          stderr = result and result.stderr or "",
+          lines = lines,
+        })
+      end
+    end,
+  })
 end
 
 function M.fetch_variants(root, runner)

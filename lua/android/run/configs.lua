@@ -62,7 +62,10 @@ function M.from_workspace(workspace, opts)
 
   local options = opts or {}
   local provider_list = options.providers or providers.defaults()
-  local list = provider_registry.list(workspace, options.state, { providers = provider_list })
+  local list = provider_registry.list(workspace, options.state, {
+    providers = provider_list,
+    detect_opts = options.detect_opts,
+  })
   local run_all = build_run_all(list)
   if run_all then
     list[#list + 1] = run_all

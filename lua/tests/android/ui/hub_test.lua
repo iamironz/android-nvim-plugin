@@ -96,6 +96,35 @@ local function hub_calls_on_cancel_on_escape()
   assert.eq(called, true, "on_cancel called")
 end
 
+local function hub_calls_on_close_with_cancel_reason()
+  local reason = nil
+  local captured = { esc = nil }
+  local original_keymap_set = vim.keymap.set
+
+  vim.keymap.set = function(_, lhs, rhs)
+    if lhs == "<Esc>" then
+      captured.esc = rhs
+    end
+  end
+
+  package.loaded["android.ui.hub"] = nil
+  local hub = require("android.ui.hub")
+  hub.open({
+    blocks = { { title = "Build Variants", desc = "Builds", items = { 1 } } },
+    on_close = function(value)
+      reason = value
+    end,
+  })
+
+  if captured.esc then
+    captured.esc()
+  end
+
+  vim.keymap.set = original_keymap_set
+
+  assert.eq(reason, "cancel", "on_close reason")
+end
+
 local function initial_line_uses_block_index()
   package.loaded["android.ui.hub"] = nil
   local hub = require("android.ui.hub")
@@ -107,6 +136,7 @@ function M.run()
   build_lines_include_summary_and_blocks()
   search_keys_include_letters_and_digits()
   hub_calls_on_cancel_on_escape()
+  hub_calls_on_close_with_cancel_reason()
   initial_line_uses_block_index()
 end
 

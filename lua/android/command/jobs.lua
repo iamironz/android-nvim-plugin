@@ -10,6 +10,27 @@ local function copy_opts(opts)
   return result
 end
 
+local function append_lines(target, lines)
+  if not lines then
+    return
+  end
+  for _, line in ipairs(lines) do
+    target[#target + 1] = line
+  end
+end
+
+local function build_result(code, stdout_lines, stderr_lines)
+  local stdout = table.concat(stdout_lines or {}, "\n")
+  local stderr = table.concat(stderr_lines or {}, "\n")
+  return {
+    ok = code == 0,
+    code = code,
+    stdout = stdout,
+    stderr = stderr,
+    lines = { stdout = stdout_lines or {}, stderr = stderr_lines or {} },
+  }
+end
+
 function M.new(config)
   local options = config or {}
   local spawn = options.spawn or job.spawn
@@ -69,6 +90,43 @@ function M.new(config)
     return entry
   end
 
+  local function run(cmd, opts)
+    local options = opts or {}
+    local stdout_lines = {}
+    local stderr_lines = {}
+    local entry = start(cmd, {
+      cwd = options.cwd,
+      env = options.env,
+      on_stdout = function(lines)
+        append_lines(stdout_lines, lines)
+        if options.on_stdout then
+          options.on_stdout(lines)
+        end
+      end,
+      on_stderr = function(lines)
+        append_lines(stderr_lines, lines)
+        if options.on_stderr then
+          options.on_stderr(lines)
+        end
+      end,
+      on_exit = function(code)
+        local result = build_result(code, stdout_lines, stderr_lines)
+        if options.on_complete then
+          options.on_complete(result)
+        end
+      end,
+    })
+
+    if not entry.ok then
+      local result = build_result(1, {}, { "jobstart_failed" })
+      if options.on_complete then
+        options.on_complete(result)
+      end
+    end
+
+    return entry
+  end
+
   local function resolve_entry(value)
     if type(value) == "table" then
       return value
@@ -93,6 +151,7 @@ function M.new(config)
 
   return {
     start = start,
+    run = run,
     stop = stop,
     list = list,
   }
@@ -102,6 +161,10 @@ local default_manager = M.new({ spawn = job.spawn })
 
 function M.start(cmd, opts)
   return default_manager.start(cmd, opts)
+end
+
+function M.run(cmd, opts)
+  return default_manager.run(cmd, opts)
 end
 
 function M.stop(entry)

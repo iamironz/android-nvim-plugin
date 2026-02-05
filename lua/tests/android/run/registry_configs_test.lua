@@ -2,6 +2,7 @@ local M = {}
 
 local assert = require("tests.helpers.assert")
 local config = require("android.config")
+local stubs_helper = require("tests.helpers.stubs")
 
 local function reset_config()
   config.reset()
@@ -108,6 +109,31 @@ local function list_with_providers(provider_list)
   return configs.from_workspace(build_workspace(), { providers = provider_list or stub_providers() })
 end
 
+local function configs_pass_detect_opts_to_registry()
+  local captured = nil
+  local original_configs = package.loaded["android.run.configs"]
+  local stubs = {
+    ["android.run.providers.registry"] = {
+      list = function(_, _, opts)
+        captured = opts and opts.detect_opts
+        return {}
+      end,
+    },
+  }
+
+  stubs_helper.with_stubs(stubs, function()
+    package.loaded["android.run.configs"] = nil
+    local configs = require("android.run.configs")
+    configs.from_workspace(build_workspace(), {
+      providers = {},
+      detect_opts = { tasks = { "assemble" } },
+    })
+  end)
+  package.loaded["android.run.configs"] = original_configs
+
+  assert.eq(captured and captured.tasks[1], "assemble", "detect opts")
+end
+
 local function lists_run_all_config()
   reset_config()
   local list = list_with_providers()
@@ -190,6 +216,7 @@ function M.run()
   run_all_targets_ordered()
   run_all_prefers_configured_modules()
   run_all_respects_custom_order()
+  configs_pass_detect_opts_to_registry()
   prefers_android_default()
   returns_empty_list_when_workspace_missing()
   returns_nil_when_find_id_nil()

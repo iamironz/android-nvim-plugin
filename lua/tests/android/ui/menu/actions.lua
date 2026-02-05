@@ -14,9 +14,13 @@ local function actions_menu_includes_blocks()
   assert.eq(blocks[1] and blocks[1].title, "Build Variants", "actions blocks")
 end
 
-local function actions_menu_has_no_summary()
+local function actions_menu_has_summary()
   local result = fixtures.run_actions_menu({ fixtures.build_block() })
-  assert.eq(result.captured and result.captured.summary_lines, nil, "actions summary")
+  assert.table_eq(
+    result.captured and result.captured.summary_lines or {},
+    { "Summary" },
+    "actions summary"
+  )
 end
 
 local function actions_menu_on_select_actions_opts()
@@ -73,6 +77,27 @@ local function actions_menu_on_cancel_reopens_hub()
         end
       end,
     },
+    ["android.ui.summary"] = {
+      lines = function()
+        return { "Summary" }
+      end,
+    },
+    ["android.actions.context"] = {
+      workspace = function()
+        return { root = "/workspace", gradle = { root = "/workspace" } }
+      end,
+    },
+    ["android.state.menu_prefetch"] = {
+      status = function()
+        return nil
+      end,
+      start = function()
+        return {
+          status = { items = {}, run_snapshot = { list = {}, current = nil } },
+          cancel = function() end,
+        }
+      end,
+    },
   }
 
   local stubs_helper = require("tests.helpers.stubs")
@@ -92,7 +117,7 @@ end
 function M.run()
   actions_menu_sets_title()
   actions_menu_includes_blocks()
-  actions_menu_has_no_summary()
+  actions_menu_has_summary()
   actions_menu_on_select_sets_title()
   actions_menu_on_select_sets_block()
   actions_menu_on_search_opens_actions()

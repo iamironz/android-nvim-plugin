@@ -111,6 +111,44 @@ local function selection_persists_config_id()
   assert.eq(store.get_state().run.config_id, "ios", "selection stored")
 end
 
+local function snapshot_passes_detect_opts_to_configs()
+  local captured = nil
+  local original_registry = package.loaded["android.run.registry"]
+  local stubbed = {
+    ["android.state.selection_store"] = {
+      load = function()
+        return {}
+      end,
+      save = function()
+        return true
+      end,
+    },
+    ["android.run.configs"] = {
+      from_workspace = function(_, opts)
+        captured = opts and opts.detect_opts
+        return {}
+      end,
+      find = function()
+        return nil
+      end,
+      default = function()
+        return nil
+      end,
+    },
+  }
+
+  stubs_helper.with_stubs(stubbed, function()
+    package.loaded["android.run.registry"] = nil
+    local registry = require("android.run.registry")
+    registry.snapshot(registry_helper.build_workspace(), {
+      detect_opts = { tasks = { "assemble" } },
+    })
+  end)
+  package.loaded["android.run.registry"] = original_registry
+
+  assert.eq(captured and captured.tasks[1], "assemble", "detect opts")
+end
+
 local function resolve_uses_selected_id()
   local registry = require("android.run.registry")
   local store = build_store({ run = { config_id = "ios" } })
@@ -177,6 +215,7 @@ function M.run()
   resolves_default_when_selected_missing()
   autosaves_default_when_selected_missing()
   select_returns_config_id()
+  snapshot_passes_detect_opts_to_configs()
   default_registry_calls_load_twice()
   default_registry_calls_save_once()
   default_registry_load_opts_workspace()

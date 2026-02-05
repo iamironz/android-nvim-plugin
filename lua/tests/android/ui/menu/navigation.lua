@@ -31,6 +31,22 @@ local function run_targets_submenu_from_main()
       end,
     },
     ["android.ui.actions"] = { open = function() end },
+    ["android.actions.context"] = {
+      workspace = function()
+        return { root = "/workspace", gradle = { root = "/workspace" } }
+      end,
+    },
+    ["android.state.menu_prefetch"] = {
+      status = function()
+        return nil
+      end,
+      start = function()
+        return {
+          status = { items = {}, run_snapshot = { list = {}, current = nil } },
+          cancel = function() end,
+        }
+      end,
+    },
   }
 
   stubs_helper.with_stubs(stubs, function()
@@ -86,6 +102,22 @@ local function main_menu_restores_block_index()
         end
       end,
     },
+    ["android.actions.context"] = {
+      workspace = function()
+        return { root = "/workspace", gradle = { root = "/workspace" } }
+      end,
+    },
+    ["android.state.menu_prefetch"] = {
+      status = function()
+        return nil
+      end,
+      start = function()
+        return {
+          status = { items = {}, run_snapshot = { list = {}, current = nil } },
+          cancel = function() end,
+        }
+      end,
+    },
   }
 
   stubs_helper.with_stubs(stubs, function()
@@ -128,6 +160,22 @@ local function run_tools_submenu_from_main()
       end,
     },
     ["android.ui.actions"] = { open = function() end },
+    ["android.actions.context"] = {
+      workspace = function()
+        return { root = "/workspace", gradle = { root = "/workspace" } }
+      end,
+    },
+    ["android.state.menu_prefetch"] = {
+      status = function()
+        return nil
+      end,
+      start = function()
+        return {
+          status = { items = {}, run_snapshot = { list = {}, current = nil } },
+          cancel = function() end,
+        }
+      end,
+    },
   }
 
   stubs_helper.with_stubs(stubs, function()

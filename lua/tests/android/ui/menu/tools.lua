@@ -100,6 +100,27 @@ local function tools_menu_on_cancel_reopens_hub()
         end
       end,
     },
+    ["android.ui.summary"] = {
+      lines = function()
+        return { "Summary" }
+      end,
+    },
+    ["android.actions.context"] = {
+      workspace = function()
+        return { root = "/workspace", gradle = { root = "/workspace" } }
+      end,
+    },
+    ["android.state.menu_prefetch"] = {
+      status = function()
+        return nil
+      end,
+      start = function()
+        return {
+          status = { items = {}, run_snapshot = { list = {}, current = nil } },
+          cancel = function() end,
+        }
+      end,
+    },
   }
 
   local stubs_helper = require("tests.helpers.stubs")

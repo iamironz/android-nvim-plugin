@@ -3,6 +3,7 @@ local M = {}
 local assert = require("tests.helpers.assert")
 local build_helpers = require("android.actions.build_helpers")
 local config = require("android.config")
+local stubs_helper = require("tests.helpers.stubs")
 
 local function reset_config()
   config.reset()
@@ -69,11 +70,38 @@ local function uses_windows_wrapper_when_present()
   vim.loop.os_uname = original_uname
 end
 
+local function fetch_task_lines_async_parses_output()
+  local captured = nil
+  local stubs = {
+    ["android.command.jobs"] = {
+      run = function(_, opts)
+        if opts and opts.on_complete then
+          opts.on_complete({ ok = true, code = 0, stdout = "assemble" })
+        end
+        return { ok = true }
+      end,
+    },
+  }
+
+  with_fs_stat({ type = "directory" }, function()
+    stubs_helper.with_stubs(stubs, function()
+      package.loaded["android.actions.build_helpers"] = nil
+      local helpers = require("android.actions.build_helpers")
+      helpers.fetch_task_lines_async("/workspace", nil, function(result)
+        captured = result
+      end)
+    end)
+  end)
+
+  assert.eq(captured and captured.lines[1], "assemble", "task lines")
+end
+
 function M.run()
   uses_configured_gradle_command_string()
   uses_configured_gradle_command_table()
   uses_wrapper_when_present()
   uses_windows_wrapper_when_present()
+  fetch_task_lines_async_parses_output()
 end
 
 return M

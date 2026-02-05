@@ -44,9 +44,29 @@ local function skips_empty_providers()
   assert.eq(#list, 0, "empty list")
 end
 
+local function passes_detect_opts_to_providers()
+  local received = nil
+  local registry = require("android.run.providers.registry")
+  registry.list({}, {}, {
+    detect_opts = { tasks = { "assemble" } },
+    providers = {
+      {
+        id = "android",
+        detect = function(_, _, opts)
+          received = opts
+          return {}
+        end,
+      },
+    },
+  })
+
+  assert.eq(received and received.tasks[1], "assemble", "detect opts")
+end
+
 function M.run()
   builds_ordered_list()
   skips_empty_providers()
+  passes_detect_opts_to_providers()
 end
 
 return M

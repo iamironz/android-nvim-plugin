@@ -3,12 +3,16 @@ local M = {}
 local assert = require("tests.helpers.assert")
 local stubs_helper = require("tests.helpers.stubs")
 
-local function summary_lines_for(stubs)
+local function summary_lines_for(stubs, opts)
   local lines = nil
+  local options = opts or {}
+  if options.include_adb == nil then
+    options.include_adb = false
+  end
   stubs_helper.with_stubs(stubs, function()
     package.loaded["android.ui.summary"] = nil
     local summary = require("android.ui.summary")
-    lines = summary.lines({ include_adb = false })
+    lines = summary.lines(options)
   end)
   return lines
 end
@@ -167,11 +171,42 @@ local function summary_lines_workspace_missing_sectioned()
   assert.table_eq(lines, expected, "summary fallback lines")
 end
 
+local function summary_includes_menu_status()
+  local menu_status = {
+    items = {
+      { label = "Gradle tasks", value = "loading..." },
+      { label = "Variants", value = "2" },
+    },
+  }
+  local lines = summary_lines_for(build_summary_stubs(run_meta_opts()), {
+    include_adb = false,
+    menu_status = menu_status,
+  })
+  local text = table.concat(lines, "|")
+  assert.contains(text, "Menu Data", "menu section")
+  assert.contains(text, "Gradle tasks: loading...", "menu gradle")
+  assert.contains(text, "Variants: 2", "menu variants")
+end
+
+local function summary_menu_status_empty_shows_tip()
+  local menu_status = { items = {} }
+  local lines = summary_lines_for(build_summary_stubs(run_meta_opts()), {
+    include_adb = false,
+    menu_status = menu_status,
+  })
+  local text = table.concat(lines, "|")
+  assert.contains(text, "Menu Data", "menu empty section")
+  assert.contains(text, "No options available", "menu empty")
+  assert.contains(text, "Tip: Run :AndroidMenu again to refresh.", "menu tip")
+end
+
 function M.run()
   summary_lines_include_state()
   summary_includes_run_task()
   summary_includes_devices_none()
   summary_lines_workspace_missing_sectioned()
+  summary_includes_menu_status()
+  summary_menu_status_empty_shows_tip()
 end
 
 return M

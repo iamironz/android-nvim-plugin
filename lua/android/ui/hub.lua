@@ -168,19 +168,16 @@ end
 
 local function set_keymaps(buf, close_window, select_current, on_search, handle_search, on_cancel)
   local function handle_cancel()
-    close_window()
+    close_window("cancel")
     if on_cancel then
       on_cancel()
     end
   end
 
-  vim.keymap.set("n", "q", close_window, { buffer = buf, silent = true })
-  vim.keymap.set(
-    "n",
-    "<Esc>",
-    on_cancel and handle_cancel or close_window,
-    { buffer = buf, silent = true }
-  )
+  vim.keymap.set("n", "q", function()
+    close_window("close")
+  end, { buffer = buf, silent = true })
+  vim.keymap.set("n", "<Esc>", handle_cancel, { buffer = buf, silent = true })
   vim.keymap.set("n", "<CR>", select_current, { buffer = buf, silent = true })
   if on_search then
     for _, key in ipairs(build_search_keys()) do
@@ -258,6 +255,7 @@ function M.open(opts)
   local on_search = options.on_search
   local initial_index = options.initial_index
   local on_cancel = options.on_cancel
+  local on_close = options.on_close
 
   local lines = build_lines(summary_lines, blocks)
   local buf = create_buffer(lines)
@@ -275,13 +273,16 @@ function M.open(opts)
   set_initial_cursor(win, lines, summary_lines, blocks, initial_index)
 
   local closed = false
-  local function close_window()
+  local function close_window(reason)
     if closed then
       return
     end
     closed = true
     if win and vim.api.nvim_win_is_valid(win) then
       vim.api.nvim_win_close(win, true)
+    end
+    if on_close and reason then
+      on_close(reason)
     end
   end
 

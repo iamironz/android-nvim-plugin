@@ -2,6 +2,28 @@ local M = {}
 
 local stubs_helper = require("tests.helpers.stubs")
 
+local function context_stub()
+  return {
+    workspace = function()
+      return { root = "/workspace", gradle = { root = "/workspace" } }
+    end,
+  }
+end
+
+local function menu_prefetch_stub()
+  return {
+    status = function()
+      return nil
+    end,
+    start = function()
+      return {
+        status = { items = {}, run_snapshot = { list = {}, current = nil } },
+        cancel = function() end,
+      }
+    end,
+  }
+end
+
 local function build_block()
   return {
     title = "Build Variants",
@@ -64,6 +86,8 @@ local function run_main_menu()
         actions_state.opts = opts
       end,
     },
+    ["android.actions.context"] = context_stub(),
+    ["android.state.menu_prefetch"] = menu_prefetch_stub(),
   }
 
   stubs_helper.with_stubs(stubs, function()
@@ -101,6 +125,13 @@ local function run_targets_menu(menu_block)
         actions_state.opts = opts
       end,
     },
+    ["android.ui.summary"] = {
+      lines = function()
+        return { "Summary" }
+      end,
+    },
+    ["android.actions.context"] = context_stub(),
+    ["android.state.menu_prefetch"] = menu_prefetch_stub(),
   }
 
   stubs_helper.with_stubs(stubs, function()
@@ -131,6 +162,13 @@ local function run_tools_menu(blocks)
         actions_state.opts = opts
       end,
     },
+    ["android.ui.summary"] = {
+      lines = function()
+        return { "Summary" }
+      end,
+    },
+    ["android.actions.context"] = context_stub(),
+    ["android.state.menu_prefetch"] = menu_prefetch_stub(),
   }
 
   stubs_helper.with_stubs(stubs, function()
@@ -161,6 +199,13 @@ local function run_actions_menu(blocks)
         actions_state.opts = opts
       end,
     },
+    ["android.ui.summary"] = {
+      lines = function()
+        return { "Summary" }
+      end,
+    },
+    ["android.actions.context"] = context_stub(),
+    ["android.state.menu_prefetch"] = menu_prefetch_stub(),
   }
 
   stubs_helper.with_stubs(stubs, function()

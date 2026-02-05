@@ -31,6 +31,18 @@ local function apply_selected_id(state, config_id)
   return next_state
 end
 
+local function build_config_options(state, opts)
+  local options = opts or {}
+  local config_opts = { state = state }
+  if options.providers then
+    config_opts.providers = options.providers
+  end
+  if options.detect_opts then
+    config_opts.detect_opts = options.detect_opts
+  end
+  return config_opts
+end
+
 local function build_registry(store)
   local registry = {}
 
@@ -42,14 +54,14 @@ local function build_registry(store)
     return store.save({ workspace_root = workspace.root }, state)
   end
 
-  function registry.list(workspace)
+  function registry.list(workspace, opts)
     local state = load_state(workspace)
-    return configs.from_workspace(workspace, { state = state })
+    return configs.from_workspace(workspace, build_config_options(state, opts))
   end
 
-  function registry.snapshot(workspace)
+  function registry.snapshot(workspace, opts)
     local state = load_state(workspace)
-    local list = configs.from_workspace(workspace, { state = state })
+    local list = configs.from_workspace(workspace, build_config_options(state, opts))
     local current_id = selected_id(state)
     local selected = configs.find(list, current_id)
     local resolved = selected or configs.default(list)
@@ -60,9 +72,9 @@ local function build_registry(store)
     return { list = list, current = resolved }
   end
 
-  function registry.resolve(workspace)
+  function registry.resolve(workspace, opts)
     local state = load_state(workspace)
-    local list = configs.from_workspace(workspace, { state = state })
+    local list = configs.from_workspace(workspace, build_config_options(state, opts))
     local current_id = selected_id(state)
     local selected = configs.find(list, current_id)
     local resolved = selected or configs.default(list)
@@ -91,20 +103,20 @@ end
 
 local default_registry = M.new()
 
-function M.list(workspace)
-  return default_registry.list(workspace)
+function M.list(workspace, opts)
+  return default_registry.list(workspace, opts)
 end
 
-function M.resolve(workspace)
-  return default_registry.resolve(workspace)
+function M.resolve(workspace, opts)
+  return default_registry.resolve(workspace, opts)
 end
 
 function M.select(workspace, config_id)
   return default_registry.select(workspace, config_id)
 end
 
-function M.snapshot(workspace)
-  return default_registry.snapshot(workspace)
+function M.snapshot(workspace, opts)
+  return default_registry.snapshot(workspace, opts)
 end
 
 return M

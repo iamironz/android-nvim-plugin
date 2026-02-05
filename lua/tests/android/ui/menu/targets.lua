@@ -27,6 +27,27 @@ local function targets_menu_on_cancel_reopens_hub()
         end
       end,
     },
+    ["android.ui.summary"] = {
+      lines = function()
+        return { "Summary" }
+      end,
+    },
+    ["android.actions.context"] = {
+      workspace = function()
+        return { root = "/workspace", gradle = { root = "/workspace" } }
+      end,
+    },
+    ["android.state.menu_prefetch"] = {
+      status = function()
+        return nil
+      end,
+      start = function()
+        return {
+          status = { items = {}, run_snapshot = { list = {}, current = nil } },
+          cancel = function() end,
+        }
+      end,
+    },
   }
 
   local stubs_helper = require("tests.helpers.stubs")
@@ -54,9 +75,13 @@ local function targets_menu_sets_build_block()
   assert.eq(blocks[1] and blocks[1].title, "Build Variants", "targets block")
 end
 
-local function targets_menu_has_no_summary()
+local function targets_menu_has_summary()
   local result = fixtures.run_targets_menu(fixtures.build_block())
-  assert.eq(result.captured and result.captured.summary_lines, nil, "targets summary")
+  assert.table_eq(
+    result.captured and result.captured.summary_lines or {},
+    { "Summary" },
+    "targets summary"
+  )
 end
 
 local function targets_menu_missing_build_does_not_open()
@@ -100,7 +125,7 @@ end
 function M.run()
   targets_menu_sets_title()
   targets_menu_sets_build_block()
-  targets_menu_has_no_summary()
+  targets_menu_has_summary()
   targets_menu_missing_build_does_not_open()
   targets_menu_on_select_sets_title()
   targets_menu_on_select_sets_block()

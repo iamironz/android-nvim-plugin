@@ -74,6 +74,29 @@ local function push_item(lines, label, value)
   table.insert(lines, string.format("  %s: %s", label, value))
 end
 
+local function append_menu_status(lines, menu_status)
+  if not menu_status then
+    return
+  end
+  push_section(lines, "Menu Data")
+  local added = false
+  for _, item in ipairs(menu_status.items or {}) do
+    local label = item and item.label or nil
+    if label and label ~= "" then
+      local value = item.value
+      if value == nil or value == "" then
+        value = "none"
+      end
+      push_item(lines, label, normalize(value))
+      added = true
+    end
+  end
+  if not added then
+    table.insert(lines, "  No options available")
+    table.insert(lines, "  Tip: Run :AndroidMenu again to refresh.")
+  end
+end
+
 local function append_run_meta(lines, run_config)
   if not run_config then
     return
@@ -136,7 +159,7 @@ local function format_devices(devices, adb_state)
   return table.concat(serials, ", ")
 end
 
-local function build_lines(workspace, state, adb_state)
+local function build_lines(workspace, state, adb_state, menu_status)
   local build = selection_defaults.build_defaults(state)
   local device = selection_defaults.device_defaults(state)
   local avd = selection_defaults.avd_defaults(state)
@@ -155,6 +178,8 @@ local function build_lines(workspace, state, adb_state)
   push_item(lines, "Run", normalize(run_config and run_config.label))
   append_run_meta(lines, run_config)
 
+  append_menu_status(lines, menu_status)
+
   push_section(lines, "Build Variants")
   push_item(lines, "Module", normalize(build.module))
   push_item(lines, "Variant", normalize(build.variant))
@@ -172,7 +197,7 @@ local function build_lines(workspace, state, adb_state)
   return lines
 end
 
-local function build_lines_fast(workspace, state, adb_state)
+local function build_lines_fast(workspace, state, adb_state, menu_status)
   local build = selection_defaults.build_defaults(state)
   local device = selection_defaults.device_defaults(state)
   local avd = selection_defaults.avd_defaults(state)
@@ -188,6 +213,8 @@ local function build_lines_fast(workspace, state, adb_state)
 
   push_section(lines, "Run")
   push_item(lines, "Run", "loading...")
+
+  append_menu_status(lines, menu_status)
 
   push_section(lines, "Build")
   push_item(lines, "Module", normalize(build.module))
@@ -280,27 +307,42 @@ function M.lines(opts)
 
   if opts and opts.include_adb == false then
     if is_fast_mode(opts) then
-      local lines = build_lines_fast(workspace, state, { devices = {}, emulator_status = nil })
+      local lines = build_lines_fast(
+        workspace,
+        state,
+        { devices = {}, emulator_status = nil },
+        opts and opts.menu_status
+      )
       local function refresh(callback)
         vim.schedule(function()
-          callback(build_lines(workspace, state, { devices = {}, emulator_status = nil }))
+          callback(build_lines(
+            workspace,
+            state,
+            { devices = {}, emulator_status = nil },
+            opts and opts.menu_status
+          ))
         end)
       end
       return lines, refresh
     end
-    return build_lines(workspace, state, { devices = {}, emulator_status = nil })
+    return build_lines(
+      workspace,
+      state,
+      { devices = {}, emulator_status = nil },
+      opts and opts.menu_status
+    )
   end
 
   if not is_fast_mode(opts) then
-    return build_lines(workspace, state)
+    return build_lines(workspace, state, nil, opts and opts.menu_status)
   end
 
   local cached = cached_adb_state(workspace.root, (opts and opts.adb_cache_ttl_ms) or 2000)
   if cached then
-    local lines = build_lines_fast(workspace, state, cached)
+    local lines = build_lines_fast(workspace, state, cached, opts and opts.menu_status)
     local function refresh(callback)
       vim.schedule(function()
-        callback(build_lines(workspace, state, cached))
+        callback(build_lines(workspace, state, cached, opts and opts.menu_status))
       end)
     end
     return lines, refresh
@@ -308,20 +350,30 @@ function M.lines(opts)
 
   local tools = sdk_discovery.new({ root = workspace.root }).tools()
   if not tools.adb then
-    local lines = build_lines_fast(workspace, state, { devices = {}, emulator_status = nil })
+    local lines = build_lines_fast(
+      workspace,
+      state,
+      { devices = {}, emulator_status = nil },
+      opts and opts.menu_status
+    )
     local function refresh(callback)
       vim.schedule(function()
-        callback(build_lines(workspace, state, { devices = {}, emulator_status = nil }))
+        callback(build_lines(
+          workspace,
+          state,
+          { devices = {}, emulator_status = nil },
+          opts and opts.menu_status
+        ))
       end)
     end
     return lines, refresh
   end
 
   local placeholder = { devices = nil, emulator_status = "checking", loading = true }
-  local lines = build_lines_fast(workspace, state, placeholder)
+  local lines = build_lines_fast(workspace, state, placeholder, opts and opts.menu_status)
   local function refresh(callback)
     resolve_adb_state_async(workspace.root, tools.adb, function(adb_state)
-      callback(build_lines(workspace, state, adb_state))
+      callback(build_lines(workspace, state, adb_state, opts and opts.menu_status))
     end)
   end
   return lines, refresh

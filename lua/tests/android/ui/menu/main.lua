@@ -2,6 +2,7 @@ local M = {}
 
 local assert = require("tests.helpers.assert")
 local fixtures = require("tests.android.ui.menu.fixtures")
+local stubs_helper = require("tests.helpers.stubs")
 
 local function main_menu_uses_hub()
   local result = fixtures.run_main_menu()
@@ -69,6 +70,22 @@ local function main_menu_on_cancel_reopens_hub()
         end
       end,
     },
+    ["android.actions.context"] = {
+      workspace = function()
+        return { root = "/workspace", gradle = { root = "/workspace" } }
+      end,
+    },
+    ["android.state.menu_prefetch"] = {
+      status = function()
+        return nil
+      end,
+      start = function()
+        return {
+          status = { items = {}, run_snapshot = { list = {}, current = nil } },
+          cancel = function() end,
+        }
+      end,
+    },
   }
 
   local stubs_helper = require("tests.helpers.stubs")
@@ -85,6 +102,52 @@ local function main_menu_on_cancel_reopens_hub()
   assert.eq(#hub_calls, 2, "hub reopened")
 end
 
+local function main_menu_passes_menu_status_to_summary()
+  local received = nil
+  local stubs = {
+    ["android.ui.menu_items"] = {
+      top_level_blocks = function()
+        return { { title = "Run", items = { { id = "run_current" } } } }
+      end,
+    },
+    ["android.ui.summary"] = {
+      lines = function(opts)
+        received = opts and opts.menu_status
+        return { "Summary" }
+      end,
+    },
+    ["android.ui.hub"] = { open = function() end },
+    ["android.ui.actions"] = { open = function() end },
+    ["android.actions.context"] = {
+      workspace = function()
+        return { root = "/workspace", gradle = { root = "/workspace" } }
+      end,
+    },
+    ["android.state.menu_prefetch"] = {
+      status = function()
+        return nil
+      end,
+      start = function()
+        return {
+          status = {
+            items = { { label = "Gradle tasks", value = "loading..." } },
+            run_snapshot = { list = {}, current = nil },
+          },
+          cancel = function() end,
+        }
+      end,
+    },
+  }
+
+  stubs_helper.with_stubs(stubs, function()
+    package.loaded["android.ui.menu"] = nil
+    local menu = require("android.ui.menu")
+    menu.show_main_menu()
+  end)
+
+  assert.eq(received and received.items[1] and received.items[1].label, "Gradle tasks", "menu_status")
+end
+
 function M.run()
   main_menu_uses_hub()
   main_menu_sets_title()
@@ -92,6 +155,7 @@ function M.run()
   main_menu_includes_run_block()
   main_menu_on_search_opens_actions()
   main_menu_on_cancel_reopens_hub()
+  main_menu_passes_menu_status_to_summary()
 end
 
 return M
