@@ -6,6 +6,23 @@ The format is based on Keep a Changelog and this project adheres to SemVer.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-02-05
+
+### Added
+- Menu prefetch with status summary to keep menus responsive.
+- Workspace observing stabilization for menu discovery.
+
+### Changed
+- Menu navigation and cancel flow to rely on search-first sections.
+- Android menu naming aligned with Android Studio terminology.
+- Menu startup performance improvements.
+- Workflow screenshot updated.
+
+### Fixed
+- Esc/back handling in Android modal pickers.
+- Hub selection alignment after summary updates.
+- Run configuration selection when invoked from actions.
+
 ## [0.1.0] - 2026-02-04
 
 ### Added
