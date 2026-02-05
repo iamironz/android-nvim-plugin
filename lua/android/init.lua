@@ -90,13 +90,23 @@ local function resolve_start_path()
   return name
 end
 
-local function has_gradle_workspace()
+local function resolve_workspace_root()
   local ok, project = pcall(require, "android.project.detect")
   if not ok or not project then
-    return false
+    return nil
   end
   local detected = project.detect(resolve_start_path())
-  return detected and detected.gradle ~= nil
+  if not detected or detected.gradle == nil then
+    return nil
+  end
+  if type(detected.root) == "string" and detected.root ~= "" then
+    return detected.root
+  end
+  local gradle_root = detected.gradle.root
+  if type(gradle_root) == "string" and gradle_root ~= "" then
+    return gradle_root
+  end
+  return nil
 end
 
 function M.setup(opts)
@@ -110,12 +120,13 @@ function M.setup(opts)
   local autosave_enabled = ui_config == nil or ui_config.autosave ~= false
   local file_watcher_enabled = ui_config == nil or ui_config.file_watcher ~= false
 
-  if has_gradle_workspace() then
+  local workspace_root = resolve_workspace_root()
+  if workspace_root then
     if autosave_enabled then
       autosave.setup()
     end
     if file_watcher_enabled then
-      file_watcher.setup()
+      file_watcher.setup({ workspace_root = workspace_root })
     end
   end
 

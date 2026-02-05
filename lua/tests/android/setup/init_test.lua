@@ -83,6 +83,54 @@ local function setup_calls_autosave_and_file_watcher()
   assert.eq(calls.file_watcher, 1, "file watcher setup called")
 end
 
+local function setup_passes_workspace_root_to_file_watcher()
+  local calls = { autosave = 0, file_watcher = 0 }
+  local args = {}
+  local save, restore = create_saver()
+
+  save(vim.api, "nvim_create_user_command")
+  save(vim.keymap, "set")
+  vim.api.nvim_create_user_command = function()
+    return nil
+  end
+  vim.keymap.set = function() end
+
+  stubs.with_stubs({
+    ["android.project.detect"] = {
+      detect = function()
+        return { root = "/workspace", gradle = { root = "/workspace" } }
+      end,
+    },
+    ["android.ui.autosave"] = {
+      setup = build_setup_counter(calls, "autosave"),
+    },
+    ["android.ui.file_watcher"] = {
+      setup = function(opts)
+        calls.file_watcher = calls.file_watcher + 1
+        args.file_watcher = opts
+      end,
+    },
+    ["android.ui.menu"] = {
+      show_main_menu = function() end,
+      show_targets_menu = function() end,
+      show_tools_menu = function() end,
+    },
+    ["android.ui.actions"] = {
+      open = function() end,
+    },
+    ["android.actions.build"] = {
+      build_default = function() end,
+    },
+  }, function()
+    package.loaded["android"] = nil
+    require("android").setup()
+  end)
+
+  restore()
+
+  assert.eq(args.file_watcher.workspace_root, "/workspace", "workspace root passed")
+end
+
 local function setup_skips_autosave_when_disabled()
   local calls = { autosave = 0, file_watcher = 0 }
   local save, restore = create_saver()
@@ -340,6 +388,7 @@ end
 
 function M.run()
   setup_calls_autosave_and_file_watcher()
+  setup_passes_workspace_root_to_file_watcher()
   setup_skips_autosave_when_disabled()
   setup_handles_non_table_ui_config()
   setup_skips_file_watcher_when_disabled()

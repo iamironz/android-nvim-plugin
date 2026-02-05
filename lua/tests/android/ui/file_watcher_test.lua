@@ -159,12 +159,91 @@ local function skips_unmodified_buffer()
   end)
 end
 
+local function skips_changes_outside_workspace_root()
+  with_vim_state(function(state)
+    state.buffers[1].name = "/other/file.txt"
+    local watcher = require("android.ui.file_watcher").new({
+      workspace_root = "/workspace",
+    })
+
+    watcher.on_change(1)
+
+    assert.eq(#state.confirm_calls, 0, "no prompt outside workspace")
+  end)
+end
+
+local function coalesces_repeated_prompts()
+  with_vim_state(function(state)
+    state.confirm_choice = 2
+    local times = { 0, 500, 1200 }
+    local index = 0
+    local watcher = require("android.ui.file_watcher").new({
+      cooldown_ms = 1000,
+      now = function()
+        index = index + 1
+        return times[index]
+      end,
+    })
+
+    watcher.on_change(1)
+    watcher.on_change(1)
+    watcher.on_change(1)
+
+    assert.eq(#state.confirm_calls, 2, "coalesced prompts")
+  end)
+end
+
+local function coalesces_repeated_prompts_by_default()
+  with_vim_state(function(state)
+    state.confirm_choice = 2
+    local times = { 0, 500, 1200 }
+    local index = 0
+    local watcher = require("android.ui.file_watcher").new({
+      now = function()
+        index = index + 1
+        return times[index]
+      end,
+    })
+
+    watcher.on_change(1)
+    watcher.on_change(1)
+    watcher.on_change(1)
+
+    assert.eq(#state.confirm_calls, 2, "default coalesced prompts")
+  end)
+end
+
+local function disables_coalescing_when_cooldown_zero()
+  with_vim_state(function(state)
+    state.confirm_choice = 2
+    local times = { 0, 500, 1200 }
+    local index = 0
+    local watcher = require("android.ui.file_watcher").new({
+      cooldown_ms = 0,
+      now = function()
+        index = index + 1
+        return times[index]
+      end,
+    })
+
+    watcher.on_change(1)
+    watcher.on_change(1)
+    watcher.on_change(1)
+
+    assert.eq(#state.confirm_calls, 3, "cooldown disabled prompts")
+  end)
+end
+
 function M.run()
   prompts_and_reloads_on_modified_buffer()
   keep_does_not_run_commands()
   diff_opens_split()
   force_save_writes_buffer()
   skips_unmodified_buffer()
+  skips_changes_outside_workspace_root()
+  coalesces_repeated_prompts()
+  coalesces_repeated_prompts_by_default()
+  disables_coalescing_when_cooldown_zero()
 end
 
 return M
