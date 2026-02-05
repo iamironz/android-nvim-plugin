@@ -23,6 +23,7 @@
 - `:AndroidBuild` runs a Gradle build for the saved module and variant, deploys to a
   device or emulator, updates the logcat package, and opens logcat on success.
 - Use the Build assemble only menu item to skip deploy.
+- Build output uses a two-layer bottom dock with a fixed filter strip above the stream.
 
 ## Diagnostics
 
@@ -74,6 +75,8 @@ Items appear only when the workspace supports the required targets.
 | Logcat | Show build errors | Open the build quickfix list. |
 
 ## Logcat controls
+
+Logcat uses a two-layer bottom dock: a fixed controls strip on top and the log stream below.
 
 | Key | Action |
 | --- | --- |

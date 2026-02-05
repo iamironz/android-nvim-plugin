@@ -176,6 +176,12 @@ end
 
 function M.start_filter_input_from_enter(state)
   state.cursor_line = 1
+  if state.control_buf then
+    state.current_buf = state.control_buf
+  end
+  if state.control_win then
+    state.current_win = state.control_win
+  end
   state.keymaps["n"]["<CR>"]()
 end
 

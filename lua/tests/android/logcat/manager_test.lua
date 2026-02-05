@@ -147,8 +147,40 @@ local function switcher_preserves_session_body_and_header()
   end)
 end
 
+local function open_uses_dock_panel_layout()
+  local open_options = nil
+
+  manager_context({
+    stubs = {
+      ["android.ui.panel"] = {
+        open = function(opts)
+          open_options = opts
+          return { buf = 1, win = 10, control_buf = 2, control_win = 11 }
+        end,
+        handle = function()
+          return { buf = 1, win = 10, control_buf = 2, control_win = 11 }
+        end,
+        clear = function() end,
+        append = function() end,
+        set_header_lines = function() end,
+        clear_body = function() end,
+        replace_body = function() end,
+        trim_body = function() end,
+        close = function()
+          return true
+        end,
+      },
+    },
+  }, function(ctx)
+    ctx.manager.open()
+    assert.eq(open_options and open_options.layout, "dock", "panel layout")
+    assert.eq(open_options and open_options.control_height, 3, "panel control height")
+  end)
+end
+
 function M.run()
   switcher_preserves_session_body_and_header()
+  open_uses_dock_panel_layout()
 end
 
 return M

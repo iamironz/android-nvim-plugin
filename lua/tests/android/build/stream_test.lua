@@ -39,6 +39,17 @@ local function start_build_job_clears_panel()
   assert.is_true(outcome.panel.cleared, "panel cleared")
 end
 
+local function start_build_job_uses_dock_layout()
+  local outcome = build_stream_helper.run_default_build()
+
+  assert.eq(outcome.panel.open_opts and outcome.panel.open_opts.layout, "dock", "panel layout")
+  assert.eq(
+    outcome.panel.open_opts and outcome.panel.open_opts.control_height,
+    1,
+    "panel control height"
+  )
+end
+
 local function start_build_job_appends_output_lines()
   -- Act
   local outcome = build_stream_helper.run_default_build()
@@ -260,6 +271,7 @@ function M.run()
   builds_command_without_shell_wrapper()
   start_build_job_opens_panel()
   start_build_job_clears_panel()
+  start_build_job_uses_dock_layout()
   start_build_job_appends_output_lines()
   start_build_job_uses_cwd()
   start_build_job_reports_failed_result()

@@ -9,6 +9,7 @@ local history = require("android.state.history")
 local filters = require("android.logcat.filters")
 local strings = require("android.utils.strings")
 local DEFAULT_MAX_LINES = 2000
+local DEFAULT_CONTROL_HEIGHT = 1
 
 local function trim_lines(lines, max_lines)
   local overflow = #lines - max_lines
@@ -100,27 +101,59 @@ local function handle_header_enter(session, line)
 end
 
 local function setup_keymaps(session)
-  vim.keymap.set("n", "f", function()
+  local function keymap_targets()
+    local buffers = {}
+    if session.buf then
+      buffers[#buffers + 1] = session.buf
+    end
+    if session.control_buf and session.control_buf ~= session.buf then
+      buffers[#buffers + 1] = session.control_buf
+    end
+    return buffers
+  end
+
+  local function map(lhs, fn)
+    for _, buffer in ipairs(keymap_targets()) do
+      vim.keymap.set("n", lhs, fn, { buffer = buffer, silent = true })
+    end
+  end
+
+  map("f", function()
     start_filter_edit(session)
-  end, { buffer = session.buf, silent = true })
-  vim.keymap.set("n", "<CR>", function()
-    local cursor = vim.api.nvim_win_get_cursor(session.win)
+  end)
+  map("<CR>", function()
+    local current_win = vim.api.nvim_get_current_win()
+    local current_buf = vim.api.nvim_get_current_buf()
+    local cursor = vim.api.nvim_win_get_cursor(current_win)
     local line = cursor and cursor[1] or 0
-    if line <= session.header_count then
-      if handle_header_enter(session, line) then
+    local separate_header_buf = session.control_buf and session.control_buf ~= session.buf
+    local header_buf = separate_header_buf and session.control_buf or session.buf
+    if current_buf == header_buf then
+      if line <= session.header_count then
+        handle_header_enter(session, line)
+        return
+      end
+      if separate_header_buf then
         return
       end
     end
-  end, { buffer = session.buf, silent = true })
+  end)
 end
 
 local function create_session(root)
-  panel.open()
+  local handle = panel.open({
+    layout = "dock",
+    control_height = DEFAULT_CONTROL_HEIGHT,
+  })
   panel.clear()
 
+  local buf = handle and handle.buf or vim.api.nvim_get_current_buf()
+  local win = handle and handle.win or vim.api.nvim_get_current_win()
   local session = {
-    buf = vim.api.nvim_get_current_buf(),
-    win = vim.api.nvim_get_current_win(),
+    buf = buf,
+    win = win,
+    control_buf = handle and handle.control_buf or nil,
+    control_win = handle and handle.control_win or nil,
     root = root,
     filter = "",
     header_count = 1,

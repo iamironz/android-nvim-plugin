@@ -141,6 +141,8 @@ function M.new(opts)
     origin_win = opts.origin_win,
     buf = opts.buf,
     win = opts.win,
+    control_buf = opts.control_buf,
+    control_win = opts.control_win,
     paused = false,
     backlog = {},
     stopped = false,
@@ -174,6 +176,8 @@ function M.configure(session, opts)
   session.origin_win = opts.origin_win
   session.buf = opts.buf
   session.win = opts.win
+  session.control_buf = opts.control_buf or session.control_buf
+  session.control_win = opts.control_win or session.control_win
   session.runner = opts.runner
   session.state = opts.state
   session.package = normalize_input(opts.package)

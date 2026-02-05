@@ -213,8 +213,21 @@ local function setup_keymaps(session, deps)
   if session.keymaps_ready then
     return
   end
+  local function keymap_targets()
+    local buffers = {}
+    if session.buf then
+      buffers[#buffers + 1] = session.buf
+    end
+    if session.control_buf and session.control_buf ~= session.buf then
+      buffers[#buffers + 1] = session.control_buf
+    end
+    return buffers
+  end
+
   local function map(lhs, fn)
-    vim.keymap.set("n", lhs, fn, { buffer = session.buf, silent = true })
+    for _, buffer in ipairs(keymap_targets()) do
+      vim.keymap.set("n", lhs, fn, { buffer = buffer, silent = true })
+    end
   end
   map("q", function() session.on_close() end)
   map("c", function() clear_panel(session) end)
@@ -226,10 +239,18 @@ local function setup_keymaps(session, deps)
   map("gl", function() select_level(session, deps) end)
   map("gs", function() session.on_switch() end)
   map("<CR>", function()
-    local cursor = vim.api.nvim_win_get_cursor(session.win)
+    local current_win = vim.api.nvim_get_current_win()
+    local current_buf = vim.api.nvim_get_current_buf()
+    local cursor = vim.api.nvim_win_get_cursor(current_win)
     local line = cursor and cursor[1] or 0
-    if line <= session.header_count then
-      if handle_header_enter(session, line, deps) then
+    local separate_header_buf = session.control_buf and session.control_buf ~= session.buf
+    local header_buf = separate_header_buf and session.control_buf or session.buf
+    if current_buf == header_buf then
+      if line <= session.header_count then
+        handle_header_enter(session, line, deps)
+        return
+      end
+      if separate_header_buf then
         return
       end
     end

@@ -12,6 +12,7 @@ M.default_max_lines = session_module.default_max_lines
 
 local sessions = {}
 local active_config_id = nil
+local DEFAULT_CONTROL_HEIGHT = 3
 
 local function resolve_logcat_state(state, config_id)
   local next_state = state or {}
@@ -134,6 +135,8 @@ local function configure_session(session, workspace, state, origin_win, config_i
     origin_win = origin_win,
     buf = session.buf,
     win = session.win,
+    control_buf = session.control_buf,
+    control_win = session.control_win,
     runner = runner,
     state = next_state,
     package = package_name,
@@ -162,7 +165,11 @@ local function configure_session(session, workspace, state, origin_win, config_i
   })
 end
 
-local function ensure_session(workspace, config_id, origin_win, state, buf, win)
+local function ensure_session(workspace, config_id, origin_win, state, panel_handle)
+  local buf = (panel_handle and panel_handle.buf) or vim.api.nvim_get_current_buf()
+  local win = (panel_handle and panel_handle.win) or vim.api.nvim_get_current_win()
+  local control_buf = panel_handle and panel_handle.control_buf or nil
+  local control_win = panel_handle and panel_handle.control_win or nil
   local session = sessions[config_id]
   if not session then
     session = session_module.new({
@@ -172,6 +179,8 @@ local function ensure_session(workspace, config_id, origin_win, state, buf, win)
       origin_win = origin_win,
       buf = buf,
       win = win,
+      control_buf = control_buf,
+      control_win = control_win,
       package = "",
       filter = "",
       level = "",
@@ -187,6 +196,8 @@ local function ensure_session(workspace, config_id, origin_win, state, buf, win)
   else
     session.buf = buf
     session.win = win
+    session.control_buf = control_buf
+    session.control_win = control_win
     session.root = workspace.root
     session.workspace = workspace
     session.origin_win = origin_win
@@ -203,10 +214,10 @@ function M.activate(config_id, origin_win)
   if not workspace then
     return
   end
-  local buf = vim.api.nvim_get_current_buf()
-  local win = vim.api.nvim_get_current_win()
+  local handle = panel.handle and panel.handle() or nil
   local state = context.load_state(workspace.root)
-  local session = ensure_session(workspace, config_id, origin_win or win, state, buf, win)
+  local current_win = handle and handle.win or vim.api.nvim_get_current_win()
+  local session = ensure_session(workspace, config_id, origin_win or current_win, state, handle)
   activate_session(session)
   session_module.ensure_started(session, { preserve_body = true })
 end
@@ -216,14 +227,15 @@ function M.open()
   if not workspace then
     return
   end
-  panel.open()
-  local buf = vim.api.nvim_get_current_buf()
-  local win = vim.api.nvim_get_current_win()
   local origin_win = vim.api.nvim_get_current_win()
+  local handle = panel.open({
+    layout = "dock",
+    control_height = DEFAULT_CONTROL_HEIGHT,
+  })
   local state = context.load_state(workspace.root)
   local config = run_registry.resolve(workspace)
   local config_id = (config and config.id) or "default"
-  local session = ensure_session(workspace, config_id, origin_win, state, buf, win)
+  local session = ensure_session(workspace, config_id, origin_win, state, handle)
   activate_session(session)
   session_module.ensure_started(session, { preserve_body = session.logcat_job ~= nil })
 end

@@ -70,7 +70,8 @@ bag of problems with a better keyboard.
   AVD from system images, install APKs, clear data, uninstall. See
   [docs/commands.md#androidmenu-items](docs/commands.md#androidmenu-items).
 - **Logcat panel.** Package, filter, and level controls, regex and term filters,
-  pause and resume, restart, reconnect backoff, stack trace navigation, highlights.
+  fixed bottom control strip, pause and resume, restart, reconnect backoff,
+  stack trace navigation, highlights.
   See [docs/commands.md#logcat-controls](docs/commands.md#logcat-controls).
 - **Run configs.** Android modules, iOS schemes, JVM run tasks, Gradle task entry,
   and JSON shell configs, plus Run All ordered by `run.run_all` settings. See
