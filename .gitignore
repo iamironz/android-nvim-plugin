@@ -15,6 +15,9 @@
 # Worktrees
 .worktrees/
 
+# Beads
+.beads/
+
 # Logs
 *.log
 logs/
