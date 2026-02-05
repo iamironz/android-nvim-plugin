@@ -139,6 +139,12 @@ local function build_prompt_variant_cancel_reopens_module_picker()
       workspace = function()
         return { root = "/workspace", modules = { ":app" } }
       end,
+      load_state = function()
+        return { build = {} }
+      end,
+      save_state = function()
+        return true
+      end,
     },
     ["android.actions.build_helpers"] = {
       module_entries = function(modules)
@@ -185,6 +191,12 @@ local function build_prompt_module_cancel_calls_on_cancel()
     ["android.actions.context"] = {
       workspace = function()
         return { root = "/workspace", modules = { ":app" } }
+      end,
+      load_state = function()
+        return { build = {} }
+      end,
+      save_state = function()
+        return true
       end,
     },
     ["android.actions.build_helpers"] = {

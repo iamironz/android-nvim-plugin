@@ -78,7 +78,7 @@ local function build_select_variant_passes_default()
     build.select_variant()
 
     assert.is_true(last_opts ~= nil, "picker called")
-    assert.eq(last_opts.title, "Build variants", "variant picker title")
+    assert.eq(last_opts.title, "Build Variants", "variant picker title")
     assert.eq(last_opts.default, "release", "variant picker default")
   end)
 end
