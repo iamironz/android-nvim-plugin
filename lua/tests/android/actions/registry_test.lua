@@ -167,6 +167,27 @@ local function run_menu_action_from_action(action, fn_name, label)
   assert.eq(received and received.from_action, true, label)
 end
 
+local function run_menu_action_passes_on_cancel(action, fn_name, label)
+  local received = nil
+  local on_cancel = function() end
+
+  local stubs = {
+    ["android.ui.menu"] = {
+      [fn_name] = function(opts)
+        received = opts
+      end,
+    },
+  }
+
+  stubs_helper.with_stubs(stubs, function()
+    package.loaded["android.actions.registry"] = nil
+    local registry = require("android.actions.registry")
+    registry.run(action, { on_cancel = on_cancel })
+  end)
+
+  assert.eq(received and received.on_cancel, on_cancel, label)
+end
+
 function M.run()
   for _, case in ipairs(registry_cases()) do
     run_action(case.action, case.module_name, case.fn_name, case.label)
@@ -183,6 +204,16 @@ function M.run()
     "open_tools_menu",
     "show_tools_menu",
     "open tools menu opts"
+  )
+  run_menu_action_passes_on_cancel(
+    "open_targets_menu",
+    "show_targets_menu",
+    "open targets menu on_cancel"
+  )
+  run_menu_action_passes_on_cancel(
+    "open_tools_menu",
+    "show_tools_menu",
+    "open tools menu on_cancel"
   )
 end
 

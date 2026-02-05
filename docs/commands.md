@@ -47,8 +47,6 @@ Items appear only when the workspace supports the required targets.
 
 | Section | Item | Notes |
 | --- | --- | --- |
-| Quick Access | Open Build Variants menu | Opens `:AndroidTargets` (build items). |
-| Quick Access | Open Device Manager menu | Opens `:AndroidTools` (Device Manager and ADB). |
 | Run | Run current | Runs the selected run config. |
 | Run | Stop run | Stops active run jobs. |
 | Build Variants | Build default | Build and deploy using saved module and variant. |

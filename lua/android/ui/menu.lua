@@ -75,7 +75,7 @@ end
 
 local function apply_back_handler(hub_opts)
   if #nav.stack == 0 then
-    hub_opts.on_cancel = nil
+    hub_opts.on_cancel = hub_opts._fallback_on_cancel
     return
   end
 
@@ -216,6 +216,9 @@ function M.show_targets_menu(opts)
     summary_lines = summary.lines({ mode = "fast", menu_status = menu_status }),
     blocks = { block },
   }
+  if options.on_cancel then
+    hub_opts._fallback_on_cancel = options.on_cancel
+  end
   local function reopen_hub()
     open_hub_with_nav(hub_opts)
   end
@@ -270,6 +273,9 @@ function M.show_tools_menu(opts)
     summary_lines = summary.lines({ mode = "fast", menu_status = menu_status }),
     blocks = blocks,
   }
+  if options.on_cancel then
+    hub_opts._fallback_on_cancel = options.on_cancel
+  end
   local function reopen_hub()
     open_hub_with_nav(hub_opts)
   end
@@ -314,6 +320,9 @@ function M.show_actions_menu(opts)
     summary_lines = summary.lines({ mode = "fast", menu_status = menu_status }),
     blocks = blocks,
   }
+  if options.on_cancel then
+    hub_opts._fallback_on_cancel = options.on_cancel
+  end
   local function reopen_hub()
     open_hub_with_nav(hub_opts)
   end

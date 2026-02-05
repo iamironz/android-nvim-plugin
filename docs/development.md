@@ -37,3 +37,10 @@ Run `:checkhealth android` from the project root to validate:
 - Double quotes for strings
 - `local M = {}` modules with `return M`
 - Keep files focused by domain
+
+## Planning notes (2026-02-05)
+
+- Plan: Selectively port Esc/back modal navigation from fix-esc-modal-back into main.
+- Keep main UI strings/defaults and menu/loading indicator behavior; only add on_cancel/back handling where missing.
+- Exclude docs/plans content.
+- Verification: run the full test suite after port.

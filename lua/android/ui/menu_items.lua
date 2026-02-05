@@ -148,28 +148,6 @@ local function config_items(snapshot)
   return items
 end
 
-local function shortcuts_items(flags)
-  local android_excludes = { "server", "ios", "jvm", "gradle", "shell" }
-  local items = {
-    {
-      id = "open_targets_menu",
-      label = "Open Build Variants menu",
-      desc = "Open the Build Variants submenu",
-      requires = { "android", "gradle" },
-      exclude_targets = android_excludes,
-    },
-    {
-      id = "open_tools_menu",
-      label = "Open Device Manager menu",
-      desc = "Open the Device Manager submenu",
-      requires = { "android", "gradle" },
-      exclude_targets = android_excludes,
-    },
-  }
-
-  return filter_items(items, flags)
-end
-
 local function build_items(flags)
   local android_build_excludes = { "server", "jvm", "gradle", "shell" }
   local ios_build_excludes = { "server", "jvm", "gradle", "shell" }
@@ -353,11 +331,6 @@ function M.top_level_blocks(workspace)
   local flags = menu_flags(resolved, run_config)
 
   return {
-    {
-      title = "Quick Access",
-      desc = "Jump to Build Variants and Device Manager.",
-      items = shortcuts_items(flags),
-    },
     {
       title = "Run Configurations",
       desc = "Select the active run configuration.",

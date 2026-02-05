@@ -96,6 +96,64 @@ local function targets_menu_on_select_actions_opts()
   return result.actions_state.opts or {}
 end
 
+local function targets_menu_on_cancel_uses_fallback()
+  local canceled = false
+  local captured = nil
+  local block = fixtures.build_block()
+  local stubs = {
+    ["android.ui.menu_items"] = {
+      block_by_title = function(title)
+        if title ~= "Build Variants" then
+          return nil
+        end
+        return block
+      end,
+    },
+    ["android.ui.hub"] = {
+      open = function(opts)
+        captured = opts
+      end,
+    },
+    ["android.ui.summary"] = {
+      lines = function()
+        return { "Summary" }
+      end,
+    },
+    ["android.actions.context"] = {
+      workspace = function()
+        return { root = "/workspace", gradle = { root = "/workspace" } }
+      end,
+    },
+    ["android.state.menu_prefetch"] = {
+      status = function()
+        return nil
+      end,
+      start = function()
+        return {
+          status = { items = {}, run_snapshot = { list = {}, current = nil } },
+          cancel = function() end,
+        }
+      end,
+    },
+  }
+
+  local stubs_helper = require("tests.helpers.stubs")
+  stubs_helper.with_stubs(stubs, function()
+    package.loaded["android.ui.menu"] = nil
+    local menu = require("android.ui.menu")
+    menu.show_targets_menu({
+      from_action = true,
+      on_cancel = function()
+        canceled = true
+      end,
+    })
+  end)
+
+  assert.eq(type(captured and captured.on_cancel), "function", "targets fallback")
+  captured.on_cancel()
+  assert.eq(canceled, true, "targets fallback called")
+end
+
 local function targets_menu_on_select_sets_title()
   local actions_opts = targets_menu_on_select_actions_opts()
   assert.eq(actions_opts.title, "Android Build Variants", "targets select title")
@@ -131,6 +189,7 @@ function M.run()
   targets_menu_on_select_sets_block()
   targets_menu_on_search_opens_actions()
   targets_menu_on_cancel_reopens_hub()
+  targets_menu_on_cancel_uses_fallback()
 end
 
 return M

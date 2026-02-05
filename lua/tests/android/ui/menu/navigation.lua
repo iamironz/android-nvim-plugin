@@ -76,7 +76,7 @@ end
 local function main_menu_restores_block_index()
   local hub_calls = {}
   local blocks = {
-    { title = "Quick Access", items = { { id = "open_targets_menu" } } },
+    { title = "Run", items = { { id = "run_current" } } },
     { title = "Build Variants", items = { { id = "build_default" } } },
   }
   local stubs = {

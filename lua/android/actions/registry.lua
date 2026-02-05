@@ -43,11 +43,17 @@ local actions = {
   adb_install = apps.install,
   clear_data = apps.clear_data,
   uninstall = apps.uninstall,
-  open_targets_menu = function()
-    open_menu("show_targets_menu", { from_action = true })
+  open_targets_menu = function(opts)
+    open_menu("show_targets_menu", {
+      from_action = true,
+      on_cancel = opts and opts.on_cancel,
+    })
   end,
-  open_tools_menu = function()
-    open_menu("show_tools_menu", { from_action = true })
+  open_tools_menu = function(opts)
+    open_menu("show_tools_menu", {
+      from_action = true,
+      on_cancel = opts and opts.on_cancel,
+    })
   end,
   run_select = run_ui.select,
   run_current = run_executor.execute_default,

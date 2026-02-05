@@ -102,7 +102,6 @@ local function exposes_nested_sections()
   assert.table_eq(
     titles,
     {
-      "Quick Access",
       "Run Configurations",
       "Run",
       "Build Variants",
@@ -270,7 +269,7 @@ local function includes_logcat_in_logs()
   assert.is_true(found, "logcat in logs")
 end
 
-local function includes_shortcuts_block()
+local function omits_quick_access_block()
   local blocks = load_blocks({
     root = "/workspace",
     gradle = { root = "/workspace" },
@@ -278,13 +277,7 @@ local function includes_shortcuts_block()
   }, "Android")
 
   local shortcuts = find_block(blocks, "Quick Access")
-  local ids = {}
-  for _, item in ipairs(shortcuts.items or {}) do
-    ids[item.id] = true
-  end
-
-  assert.is_true(ids.open_targets_menu == true, "shortcuts targets")
-  assert.is_true(ids.open_tools_menu == true, "shortcuts tools")
+  assert.eq(shortcuts, nil, "quick access removed")
 end
 
 local function includes_health_check_in_logs()
@@ -373,7 +366,7 @@ function M.run()
   shows_ios_actions_with_ios()
   hides_android_actions_without_gradle()
   includes_logcat_in_logs()
-  includes_shortcuts_block()
+  omits_quick_access_block()
   includes_health_check_in_logs()
   hides_build_and_deploy_for_jvm_target()
   hides_android_deploy_for_ios_target()

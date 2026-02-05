@@ -137,6 +137,64 @@ local function tools_menu_on_cancel_reopens_hub()
   assert.eq(#hub_calls, 2, "tools hub reopened")
 end
 
+local function tools_menu_on_cancel_uses_fallback()
+  local canceled = false
+  local captured = nil
+  local block = fixtures.devices_block()
+  local stubs = {
+    ["android.ui.menu_items"] = {
+      block_by_title = function(title)
+        if title ~= "Device Manager" then
+          return nil
+        end
+        return block
+      end,
+    },
+    ["android.ui.hub"] = {
+      open = function(opts)
+        captured = opts
+      end,
+    },
+    ["android.ui.summary"] = {
+      lines = function()
+        return { "Summary" }
+      end,
+    },
+    ["android.actions.context"] = {
+      workspace = function()
+        return { root = "/workspace", gradle = { root = "/workspace" } }
+      end,
+    },
+    ["android.state.menu_prefetch"] = {
+      status = function()
+        return nil
+      end,
+      start = function()
+        return {
+          status = { items = {}, run_snapshot = { list = {}, current = nil } },
+          cancel = function() end,
+        }
+      end,
+    },
+  }
+
+  local stubs_helper = require("tests.helpers.stubs")
+  stubs_helper.with_stubs(stubs, function()
+    package.loaded["android.ui.menu"] = nil
+    local menu = require("android.ui.menu")
+    menu.show_tools_menu({
+      from_action = true,
+      on_cancel = function()
+        canceled = true
+      end,
+    })
+  end)
+
+  assert.eq(type(captured and captured.on_cancel), "function", "tools fallback")
+  captured.on_cancel()
+  assert.eq(canceled, true, "tools fallback called")
+end
+
 function M.run()
   tools_menu_sets_title_with_fallback()
   tools_menu_includes_devices_block()
@@ -147,6 +205,7 @@ function M.run()
   tools_menu_on_select_sets_block()
   tools_menu_on_search_opens_actions()
   tools_menu_on_cancel_reopens_hub()
+  tools_menu_on_cancel_uses_fallback()
 end
 
 return M
