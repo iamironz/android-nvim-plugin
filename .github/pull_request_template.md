@@ -11,6 +11,9 @@
 
 - [ ] README updated (if needed)
 - [ ] docs/ updated (if needed)
+- [ ] docs navigation updated for moved or renamed pages
+- [ ] command/config behavior reflected in reference docs
+- [ ] user workflow changes reflected in guides
 - [ ] CHANGELOG updated (user-visible changes)
 - [ ] Config changes or new defaults noted
 
