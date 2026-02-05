@@ -29,6 +29,22 @@ local function load_blocks(workspace, run_label, run_target, config_list)
         end
         return { id = "android:app", label = run_label, target = run_target }
       end,
+      snapshot = function()
+        local list = config_list
+          or {
+            {
+              id = "android:app",
+              label = "Android",
+              target = "android",
+              type = "android",
+            },
+          }
+        local current = nil
+        if run_label or run_target then
+          current = { id = "android:app", label = run_label, target = run_target }
+        end
+        return { list = list, current = current }
+      end,
     },
   }
 

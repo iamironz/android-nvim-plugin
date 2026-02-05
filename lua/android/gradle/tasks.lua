@@ -37,7 +37,7 @@ local function task_name(line)
   return entry and entry.name or nil
 end
 
-local function module_from_task(task)
+local function module_from_task(task, patterns)
   if not task or task == "" then
     return nil
   end
@@ -45,12 +45,14 @@ local function module_from_task(task)
   if not module or not name then
     return nil
   end
-  if name:match("^assemble%u") or name:match("^bundle%u") or name:match("^install%u") then
-    local lowered = name:lower()
-    if lowered:match("androidtest") or lowered:match("unittest") then
-      return nil
+  local lowered = name:lower()
+  if lowered:match("androidtest") or lowered:match("unittest") then
+    return nil
+  end
+  for _, pattern in ipairs(patterns or {}) do
+    if name:match(pattern) then
+      return ":" .. module
     end
-    return ":" .. module
   end
   return nil
 end
@@ -77,11 +79,11 @@ function M.parse(lines)
   return entries
 end
 
-function M.android_modules(lines)
+local function collect_modules(lines, patterns)
   local modules = {}
   for _, line in ipairs(lines or {}) do
     local task = task_name(line)
-    local module = module_from_task(task)
+    local module = module_from_task(task, patterns)
     if module then
       modules[module] = true
     end
@@ -93,6 +95,14 @@ function M.android_modules(lines)
   end
   table.sort(result)
   return result
+end
+
+function M.android_modules(lines)
+  local install_modules = collect_modules(lines, { "^install%u" })
+  if #install_modules > 0 then
+    return install_modules
+  end
+  return collect_modules(lines, { "^assemble%u", "^bundle%u" })
 end
 
 return M

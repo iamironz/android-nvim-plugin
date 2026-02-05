@@ -41,8 +41,19 @@ local function parses_gradle_tasks_output()
   assert.eq(result[8].description, "Displays the tasks runnable from root project.", "task 8 desc")
 end
 
+local function prefers_install_tasks_for_android_modules()
+  local modules = tasks.android_modules({
+    ":lib:assembleDebug - Assembles debug builds.",
+    ":app:assembleDebug - Assembles debug builds.",
+    ":app:installDebug - Installs debug builds.",
+  })
+
+  assert.table_eq(modules, { ":app" }, "android modules prefer install")
+end
+
 function M.run()
   parses_gradle_tasks_output()
+  prefers_install_tasks_for_android_modules()
 end
 
 return M

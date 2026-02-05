@@ -17,3 +17,9 @@
 
 # Logs
 *.log
+logs/
+
+# Node.js
+node_modules/
+package.json
+package-lock.json
