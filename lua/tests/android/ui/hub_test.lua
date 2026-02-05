@@ -16,7 +16,7 @@ local function build_lines_include_summary_and_blocks()
     "Workspace: /app",
     "",
     "Sections (select with <CR> or [1-2])",
-    "  j/k move | <CR> open | / search | Esc back | q close",
+    "  j/k or arrows move | <CR>/<Right> open | / search | Esc/<Left> back | q close",
     "",
     "[1] Build Variants (2) | Builds and variants",
     "[2] Device Manager | Devices and emulators",
@@ -220,6 +220,8 @@ local function hub_enter_on_summary_line_does_not_close()
   local captured = {}
   local original_keymap_set = vim.keymap.set
   local original_cursor = vim.api.nvim_win_get_cursor
+  local original_set_cursor = vim.api.nvim_win_set_cursor
+  local cursor_set_calls = {}
 
   vim.keymap.set = function(_, lhs, rhs)
     if lhs == "<CR>" then
@@ -228,6 +230,9 @@ local function hub_enter_on_summary_line_does_not_close()
   end
   vim.api.nvim_win_get_cursor = function()
     return { 1, 0 }
+  end
+  vim.api.nvim_win_set_cursor = function(_, pos)
+    table.insert(cursor_set_calls, { pos[1], pos[2] })
   end
 
   local ok, err = pcall(function()
@@ -255,6 +260,7 @@ local function hub_enter_on_summary_line_does_not_close()
 
   vim.keymap.set = original_keymap_set
   vim.api.nvim_win_get_cursor = original_cursor
+  vim.api.nvim_win_set_cursor = original_set_cursor
 
   if not ok then
     error(err)
@@ -262,6 +268,8 @@ local function hub_enter_on_summary_line_does_not_close()
 
   assert.eq(selected, false, "summary line not selectable")
   assert.eq(reason, nil, "summary line does not close")
+  local last = cursor_set_calls[#cursor_set_calls] or {}
+  assert.eq(last[1], 6, "summary enter moves to first section")
 end
 
 local function hub_number_shortcut_selects_block()
@@ -377,6 +385,79 @@ local function hub_q_key_keeps_close_behavior_when_search_enabled()
   assert.eq(reason, "close", "q closes hub")
 end
 
+local function hub_right_key_opens_selection()
+  local selected = nil
+  local captured = {}
+  local original_keymap_set = vim.keymap.set
+  local original_cursor = vim.api.nvim_win_get_cursor
+
+  vim.keymap.set = function(_, lhs, rhs)
+    captured[lhs] = rhs
+  end
+  vim.api.nvim_win_get_cursor = function()
+    return { 4, 0 }
+  end
+
+  local ok, err = pcall(function()
+    package.loaded["android.ui.hub"] = nil
+    local hub = require("android.ui.hub")
+    hub.open({
+      blocks = {
+        { title = "Run", items = { 1 } },
+      },
+      on_select = function(block)
+        selected = block and block.title or nil
+      end,
+    })
+    if captured["<Right>"] then
+      captured["<Right>"]()
+    end
+  end)
+
+  vim.keymap.set = original_keymap_set
+  vim.api.nvim_win_get_cursor = original_cursor
+
+  if not ok then
+    error(err)
+  end
+
+  assert.eq(selected, "Run", "right opens section")
+end
+
+local function hub_left_key_triggers_cancel()
+  local canceled = false
+  local captured = {}
+  local original_keymap_set = vim.keymap.set
+
+  vim.keymap.set = function(_, lhs, rhs)
+    captured[lhs] = rhs
+  end
+
+  local ok, err = pcall(function()
+    package.loaded["android.ui.hub"] = nil
+    local hub = require("android.ui.hub")
+    hub.open({
+      blocks = {
+        { title = "Run", items = { 1 } },
+      },
+      on_cancel = function()
+        canceled = true
+      end,
+    })
+    if captured["<Left>"] then
+      captured["<Left>"]()
+    end
+  end)
+
+  vim.keymap.set = original_keymap_set
+
+  if not ok then
+    error(err)
+  end
+
+  assert.eq(canceled, true, "left triggers cancel")
+end
+
 function M.run()
   build_lines_include_summary_and_blocks()
   search_keys_include_letters_without_navigation()
@@ -389,6 +470,8 @@ function M.run()
   hub_number_shortcut_selects_block()
   hub_slash_opens_search_without_default_text()
   hub_q_key_keeps_close_behavior_when_search_enabled()
+  hub_right_key_opens_selection()
+  hub_left_key_triggers_cancel()
 end
 
 return M

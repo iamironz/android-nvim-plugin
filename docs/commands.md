@@ -12,6 +12,7 @@
 
 - Menus open a hub list of sections, and AndroidMenu shows a summary panel at the top.
 - The hub shows explicit section rows like `[1] Run` that can be selected with `<CR>` or number keys.
+- Arrow keys are supported in the hub: `<Right>` opens selection and `<Left>` goes back.
 - Press `/` to open the search overlay from the hub, or type letters to prefill search.
 - AndroidTargets, AndroidTools, and AndroidActions use the hub list with type-to-search.
 - Press Esc to return to the hub from the actions picker, and `q` closes it.

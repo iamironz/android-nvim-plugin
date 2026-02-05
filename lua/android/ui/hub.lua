@@ -46,7 +46,7 @@ local function section_header_lines(blocks)
   local shortcut = shortcut_label(count)
   return {
     string.format("Sections (select with <CR> or [%s])", shortcut),
-    "  j/k move | <CR> open | / search | Esc back | q close",
+    "  j/k or arrows move | <CR>/<Right> open | / search | Esc/<Left> back | q close",
     "",
   }
 end
@@ -184,6 +184,13 @@ local function initial_line(summary_lines, blocks, initial_index)
   return block_start(summary_lines, blocks) + index
 end
 
+local function first_block_line(summary_lines, blocks)
+  if #(blocks or {}) == 0 then
+    return nil
+  end
+  return block_start(summary_lines, blocks) + 1
+end
+
 local function set_initial_cursor(win, lines, summary_lines, blocks, initial_index)
   if #lines == 0 or #blocks == 0 then
     return
@@ -218,7 +225,9 @@ local function set_keymaps(
     close_window("close")
   end, { buffer = buf, silent = true })
   vim.keymap.set("n", "<Esc>", handle_cancel, { buffer = buf, silent = true })
+  vim.keymap.set("n", "<Left>", handle_cancel, { buffer = buf, silent = true })
   vim.keymap.set("n", "<CR>", select_current, { buffer = buf, silent = true })
+  vim.keymap.set("n", "<Right>", select_current, { buffer = buf, silent = true })
   local max_shortcut = math.min(9, block_count or 0)
   for index = 1, max_shortcut do
     local shortcut = tostring(index)
@@ -345,6 +354,10 @@ function M.open(opts)
   local function select_current()
     local index = current_index(state.blocks, state.summary_lines, win)
     if not index then
+      local line = first_block_line(state.summary_lines, state.blocks)
+      if line and win and vim.api.nvim_win_is_valid(win) then
+        vim.api.nvim_win_set_cursor(win, { line, 0 })
+      end
       return
     end
     local block = state.blocks[index]

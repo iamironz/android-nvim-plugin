@@ -53,6 +53,22 @@ local function move_default_to_front(results, format, default)
   return copy
 end
 
+local function filter_results_by_query(results, format, query)
+  if query == nil or query == "" then
+    return results
+  end
+
+  local needle = tostring(query):lower()
+  local filtered = {}
+  for _, entry in ipairs(results or {}) do
+    local label = build_label(entry, format):lower()
+    if label:find(needle, 1, true) then
+      table.insert(filtered, entry)
+    end
+  end
+  return filtered
+end
+
 local function fallback_filter_input(options)
   if not vim.ui or not vim.ui.input then
     vim.notify("vim.ui.input not available", vim.log.levels.WARN)
@@ -91,8 +107,17 @@ local function fallback_select_from_list(options)
   end
 
   local results = build_results(items)
-  if options.default ~= nil and options.default ~= "" then
-    results = move_default_to_front(results, options.format, options.default)
+  local has_default = options.default ~= nil and options.default ~= ""
+  if has_default then
+    local exact_index = find_default_selection_index(results, options.format, options.default)
+    if exact_index then
+      results = move_default_to_front(results, options.format, options.default)
+    else
+      local filtered = filter_results_by_query(results, options.format, options.default)
+      if #filtered > 0 then
+        results = filtered
+      end
+    end
   end
   vim.ui.select(results, {
     prompt = options.title or "Select",
