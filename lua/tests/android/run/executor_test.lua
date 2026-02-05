@@ -119,10 +119,54 @@ local function execute_run_all_runs_targets()
   assert.table_eq(calls, { "jvm:server", "android:app" }, "run all order")
 end
 
+local function execute_default_uses_context_workspace_with_opts()
+  local called = { run = false }
+  local stubs = {
+    ["android.actions.context"] = {
+      workspace = function()
+        return { root = "/workspace" }
+      end,
+      load_state = function(root)
+        called.load_root = root
+        return {}
+      end,
+    },
+    ["android.run.registry"] = {
+      resolve = function(workspace)
+        called.resolve_root = workspace and workspace.root or nil
+        if workspace and workspace.root then
+          return {
+            id = "android:app",
+            target = "android",
+            type = "android",
+          }
+        end
+        return nil
+      end,
+    },
+    ["android.run.executor_handlers"] = {
+      run = function()
+        called.run = true
+      end,
+    },
+  }
+
+  stubs_helper.with_stubs(stubs, function()
+    package.loaded["android.run.executor"] = nil
+    local executor = require("android.run.executor")
+    executor.execute_default({ on_cancel = function() end })
+  end)
+
+  assert.eq(called.resolve_root, "/workspace", "resolve uses workspace")
+  assert.eq(called.load_root, "/workspace", "load_state uses workspace")
+  assert.eq(called.run, true, "handler called")
+end
+
 function M.run()
   execute_default_runs_handler()
   execute_selects_config_and_runs()
   execute_run_all_runs_targets()
+  execute_default_uses_context_workspace_with_opts()
 end
 
 return M

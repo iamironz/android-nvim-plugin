@@ -8,7 +8,7 @@ local M = {}
 local active_run = nil
 
 local function resolve_workspace(workspace)
-  if workspace then
+  if workspace and workspace.root then
     return workspace
   end
   return context.workspace()

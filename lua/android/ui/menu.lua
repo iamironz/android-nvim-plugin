@@ -46,6 +46,11 @@ local function clear_prefetch()
   nav.prefetch = nil
 end
 
+local function reset_nav_state()
+  nav.stack = {}
+  nav.current = nil
+end
+
 local function ensure_prefetch(workspace)
   if not workspace or not workspace.root then
     return nil
@@ -74,6 +79,13 @@ local function resolve_menu_status(workspace)
 end
 
 local function apply_back_handler(hub_opts)
+  if hub_opts._prefer_fallback and hub_opts._fallback_on_cancel then
+    hub_opts.on_cancel = function()
+      reset_nav_state()
+      hub_opts._fallback_on_cancel()
+    end
+    return
+  end
   if #nav.stack == 0 then
     hub_opts.on_cancel = hub_opts._fallback_on_cancel
     return
@@ -218,6 +230,7 @@ function M.show_targets_menu(opts)
   }
   if options.on_cancel then
     hub_opts._fallback_on_cancel = options.on_cancel
+    hub_opts._prefer_fallback = options.from_action
   end
   local function reopen_hub()
     open_hub_with_nav(hub_opts)
@@ -275,6 +288,7 @@ function M.show_tools_menu(opts)
   }
   if options.on_cancel then
     hub_opts._fallback_on_cancel = options.on_cancel
+    hub_opts._prefer_fallback = options.from_action
   end
   local function reopen_hub()
     open_hub_with_nav(hub_opts)
@@ -322,6 +336,7 @@ function M.show_actions_menu(opts)
   }
   if options.on_cancel then
     hub_opts._fallback_on_cancel = options.on_cancel
+    hub_opts._prefer_fallback = options.from_action
   end
   local function reopen_hub()
     open_hub_with_nav(hub_opts)

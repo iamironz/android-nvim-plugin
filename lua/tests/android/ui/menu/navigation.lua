@@ -202,12 +202,79 @@ local function tools_submenu_returns_menu_title()
   assert.eq(hub_calls[3] and hub_calls[3].title, "Android Menu", "tools back menu")
 end
 
+local function targets_submenu_prefers_action_fallback()
+  local hub_calls = {}
+  local canceled = false
+  local run_block = { title = "Run", items = { { id = "run_current" } } }
+  local build_block = fixtures.build_block()
+  local stubs = {
+    ["android.ui.menu_items"] = {
+      top_level_blocks = function()
+        return { run_block }
+      end,
+      block_by_title = function(title)
+        if title == "Build Variants" then
+          return build_block
+        end
+        return nil
+      end,
+    },
+    ["android.ui.summary"] = {
+      lines = function()
+        return { "Summary" }
+      end,
+    },
+    ["android.ui.hub"] = {
+      open = function(opts)
+        table.insert(hub_calls, opts)
+      end,
+    },
+    ["android.ui.actions"] = { open = function() end },
+    ["android.actions.context"] = {
+      workspace = function()
+        return { root = "/workspace", gradle = { root = "/workspace" } }
+      end,
+    },
+    ["android.state.menu_prefetch"] = {
+      status = function()
+        return nil
+      end,
+      start = function()
+        return {
+          status = { items = {}, run_snapshot = { list = {}, current = nil } },
+          cancel = function() end,
+        }
+      end,
+    },
+  }
+
+  stubs_helper.with_stubs(stubs, function()
+    package.loaded["android.ui.menu"] = nil
+    local menu = require("android.ui.menu")
+    menu.show_main_menu()
+    menu.show_targets_menu({
+      from_action = true,
+      on_cancel = function()
+        canceled = true
+      end,
+    })
+  end)
+
+  if hub_calls[2] and hub_calls[2].on_cancel then
+    hub_calls[2].on_cancel()
+  end
+
+  assert.eq(canceled, true, "targets fallback")
+  assert.eq(#hub_calls, 2, "targets no hub reopen")
+end
+
 function M.run()
   main_menu_restores_block_index()
   targets_submenu_reopens_parent_hub()
   targets_submenu_returns_menu_title()
   tools_submenu_reopens_parent_hub()
   tools_submenu_returns_menu_title()
+  targets_submenu_prefers_action_fallback()
 end
 
 return M
