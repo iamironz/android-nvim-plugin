@@ -44,7 +44,7 @@ local function select_returns_selected_id()
 
   local title = picker_opts.title
   local label = picker_opts.items[1].label
-  assert.eq(title, "Run Config", "run picker title")
+  assert.eq(title, "Run Configurations", "run picker title")
   assert.eq(label, "Android", "run picker label")
   assert.eq(selected, "ios", "run picker selected")
 end

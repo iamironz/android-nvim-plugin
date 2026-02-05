@@ -14,7 +14,7 @@ local function run_targets_submenu_from_main()
         return { run_block }
       end,
       block_by_title = function(title)
-        if title == "Build" then
+        if title == "Build Variants" then
           return build_block
         end
         return nil
@@ -60,8 +60,8 @@ end
 local function main_menu_restores_block_index()
   local hub_calls = {}
   local blocks = {
-    { title = "Shortcuts", items = { { id = "open_targets_menu" } } },
-    { title = "Build", items = { { id = "build_default" } } },
+    { title = "Quick Access", items = { { id = "open_targets_menu" } } },
+    { title = "Build Variants", items = { { id = "build_default" } } },
   }
   local stubs = {
     ["android.ui.menu_items"] = {

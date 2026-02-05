@@ -118,11 +118,11 @@ local function build_lines(workspace, state)
   push_item(lines, "Run", normalize(run_config and run_config.label))
   append_run_meta(lines, run_config)
 
-  push_section(lines, "Build")
+  push_section(lines, "Build Variants")
   push_item(lines, "Module", normalize(build.module))
   push_item(lines, "Variant", normalize(build.variant))
 
-  push_section(lines, "Devices")
+  push_section(lines, "Device Manager")
   push_item(lines, "Device", normalize(device.serial))
   push_item(lines, "Devices", format_devices(adb_state.devices))
   push_item(lines, "AVD", normalize(avd.name))

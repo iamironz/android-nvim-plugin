@@ -32,7 +32,7 @@ function M.select(workspace_or_opts)
   local list = run_registry.list(target_workspace)
   local selected = nil
   picker.select_from_list({
-    title = "Run Config",
+    title = "Run Configurations",
     items = build_items(list),
     on_select = function(config_id)
       selected = run_registry.select(target_workspace, config_id)

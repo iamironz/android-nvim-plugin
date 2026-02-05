@@ -4,7 +4,7 @@ local stubs_helper = require("tests.helpers.stubs")
 
 local function build_block()
   return {
-    title = "Build",
+    title = "Build Variants",
     items = {
       { id = "build_default", label = "Build default", desc = "Build using defaults" },
     },
@@ -13,7 +13,7 @@ end
 
 local function devices_block()
   return {
-    title = "Devices",
+    title = "Device Manager",
     items = {
       { id = "select_device", label = "Select device", desc = "Pick device" },
     },
@@ -22,7 +22,7 @@ end
 
 local function apps_block()
   return {
-    title = "Apps",
+    title = "ADB",
     items = {
       { id = "adb_install", label = "ADB install", desc = "Install app" },
     },
@@ -85,7 +85,7 @@ local function run_targets_menu(menu_block)
   local stubs = {
     ["android.ui.menu_items"] = {
       block_by_title = function(title)
-        if title ~= "Build" then
+        if title ~= "Build Variants" then
           return nil
         end
         return menu_block

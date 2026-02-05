@@ -24,7 +24,7 @@ local function prompt_for_variant(root, runner, on_selected, opts)
   end
   local options = opts or {}
   picker.select_from_list({
-    title = "Build variants",
+    title = "Build Variants",
     items = variants,
     on_select = on_selected,
     on_cancel = options.on_cancel,

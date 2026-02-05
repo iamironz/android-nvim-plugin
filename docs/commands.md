@@ -3,8 +3,8 @@
 | Command | Description | Default shortcut |
 | --- | --- | --- |
 | `:AndroidMenu` | Open the main menu. | `<leader>am` |
-| `:AndroidTargets` | Open the build menu. | `<leader>at` |
-| `:AndroidTools` | Open the tools menu. | `<leader>ao` |
+| `:AndroidTargets` | Open the Build Variants menu. | `<leader>at` |
+| `:AndroidTools` | Open the Device Manager and ADB menu. | `<leader>ao` |
 | `:AndroidActions` | Open the actions hub. | `<leader>aa` |
 | `:AndroidBuild` | Build, deploy, and open logcat using saved defaults. | `<leader>ab` |
 
@@ -47,31 +47,31 @@ Items appear only when the workspace supports the required targets.
 
 | Section | Item | Notes |
 | --- | --- | --- |
-| Shortcuts | Open build menu | Opens `:AndroidTargets` (build items). |
-| Shortcuts | Open tools menu | Opens `:AndroidTools` (devices and apps). |
+| Quick Access | Open Build Variants menu | Opens `:AndroidTargets` (build items). |
+| Quick Access | Open Device Manager menu | Opens `:AndroidTools` (Device Manager and ADB). |
 | Run | Run current | Runs the selected run config. |
 | Run | Stop run | Stops active run jobs. |
-| Build | Build default | Build and deploy using saved module and variant. |
-| Build | Build assemble only | Build without deploy. |
-| Build | Build with prompts | Pick module and variant before building. |
-| Build | iOS build | Requires iOS workspace. |
-| Build | iOS deploy | Requires iOS workspace and simulator. |
-| Build | Gradle tasks | Browse and run Gradle tasks. |
-| Build | Select module | Set the default Gradle module. |
-| Build | Select variant | Set the default build variant. |
-| Build | Output APKs | List APKs and copy paths. |
-| Build | Gradle clean | Run `clean` in the workspace. |
-| Devices | Select device | Pick the default adb device. |
-| Devices | Select emulator AVD | Pick the default emulator profile. |
-| Devices | Start emulator | Launch the default emulator. |
-| Devices | Create AVD | Create a new emulator profile. |
-| Devices | Stop emulator | Stop a running emulator. |
-| Apps | ADB install | Install APK to a device. |
-| Apps | Clear app data | Clear app data on a device. |
-| Apps | Uninstall app | Remove the app from a device. |
-| Logs | Logcat | Open logcat panel. |
-| Logs | Health check | Run `:checkhealth android`. |
-| Logs | Show build errors | Open the build quickfix list. |
+| Build Variants | Build default | Build and deploy using saved module and variant. |
+| Build Variants | Build assemble only | Build without deploy. |
+| Build Variants | Build with prompts | Pick module and variant before building. |
+| Build Variants | iOS build | Requires iOS workspace. |
+| Build Variants | iOS deploy | Requires iOS workspace and simulator. |
+| Build Variants | Gradle tasks | Browse and run Gradle tasks. |
+| Build Variants | Select module | Set the default Gradle module. |
+| Build Variants | Select variant | Set the default build variant. |
+| Build Variants | Output APKs | List APKs and copy paths. |
+| Build Variants | Gradle clean | Run `clean` in the workspace. |
+| Device Manager | Select device | Pick the default adb device. |
+| Device Manager | Select emulator AVD | Pick the default emulator profile. |
+| Device Manager | Start emulator | Launch the default emulator. |
+| Device Manager | Create AVD | Create a new emulator profile. |
+| Device Manager | Stop emulator | Stop a running emulator. |
+| ADB | ADB install | Install APK to a device. |
+| ADB | Clear app data | Clear app data on a device. |
+| ADB | Uninstall app | Remove the app from a device. |
+| Logcat | Logcat | Open logcat panel. |
+| Logcat | Health check | Run `:checkhealth android`. |
+| Logcat | Show build errors | Open the build quickfix list. |
 
 ## Logcat controls
 

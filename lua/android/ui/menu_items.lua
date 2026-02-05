@@ -154,15 +154,15 @@ local function shortcuts_items(flags)
   local items = {
     {
       id = "open_targets_menu",
-      label = "Open build menu",
-      desc = "Open the build submenu",
+      label = "Open Build Variants menu",
+      desc = "Open the Build Variants submenu",
       requires = { "android", "gradle" },
       exclude_targets = android_excludes,
     },
     {
       id = "open_tools_menu",
-      label = "Open tools menu",
-      desc = "Open the tools submenu",
+      label = "Open Device Manager menu",
+      desc = "Open the Device Manager submenu",
       requires = { "android", "gradle" },
       exclude_targets = android_excludes,
     },
@@ -354,31 +354,38 @@ function M.top_level_blocks(workspace)
 
   return {
     {
-      title = "Shortcuts",
+      title = "Quick Access",
+      desc = "Jump to Build Variants and Device Manager.",
       items = shortcuts_items(flags),
     },
     {
-      title = "Configs",
+      title = "Run Configurations",
+      desc = "Select the active run configuration.",
       items = resolved and config_items(resolved) or {},
     },
     {
       title = "Run",
+      desc = "Run current configuration or stop runs.",
       items = run_items(run_config),
     },
     {
-      title = "Build",
+      title = "Build Variants",
+      desc = "Select module/variant, build, and Gradle tasks.",
       items = build_items(flags),
     },
     {
-      title = "Devices",
+      title = "Device Manager",
+      desc = "Select devices/AVDs and manage emulators.",
       items = devices_items(flags),
     },
     {
-      title = "Apps",
+      title = "ADB",
+      desc = "Install APKs, clear data, uninstall apps.",
       items = apps_items(flags),
     },
     {
-      title = "Logs",
+      title = "Logcat",
+      desc = "Open logcat and diagnostics.",
       items = logs_items(flags),
     },
   }

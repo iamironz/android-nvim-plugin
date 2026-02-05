@@ -65,8 +65,8 @@ bag of problems with a better keyboard.
 - **Build and deploy.** Saved module and variant, prompt builds, Gradle tasks, clean,
   and a build output panel with filter plus quickfix integration for Kotlin and Java.
   See [docs/commands.md#build-behavior](docs/commands.md#build-behavior).
-- **Devices and apps.** Pick adb device or AVD, start or stop emulator, create AVD
-  from system images, install APKs, clear data, uninstall. See
+- **Device Manager and ADB.** Pick adb device or AVD, start or stop emulator, create
+  AVD from system images, install APKs, clear data, uninstall. See
   [docs/commands.md#androidmenu-items](docs/commands.md#androidmenu-items).
 - **Logcat panel.** Package, filter, and level controls, regex and term filters,
   pause and resume, restart, reconnect backoff, stack trace navigation, highlights.

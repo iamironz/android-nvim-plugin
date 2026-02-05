@@ -9,7 +9,7 @@ local function targets_menu_on_cancel_reopens_hub()
   local stubs = {
     ["android.ui.menu_items"] = {
       block_by_title = function(title)
-        if title ~= "Build" then
+        if title ~= "Build Variants" then
           return nil
         end
         return block
@@ -45,13 +45,13 @@ end
 
 local function targets_menu_sets_title()
   local result = fixtures.run_targets_menu(fixtures.build_block())
-  assert.eq(result.captured and result.captured.title, "Android Build", "targets title")
+  assert.eq(result.captured and result.captured.title, "Android Build Variants", "targets title")
 end
 
 local function targets_menu_sets_build_block()
   local result = fixtures.run_targets_menu(fixtures.build_block())
   local blocks = result.captured and result.captured.blocks or {}
-  assert.eq(blocks[1] and blocks[1].title, "Build", "targets block")
+  assert.eq(blocks[1] and blocks[1].title, "Build Variants", "targets block")
 end
 
 local function targets_menu_has_no_summary()
@@ -73,13 +73,13 @@ end
 
 local function targets_menu_on_select_sets_title()
   local actions_opts = targets_menu_on_select_actions_opts()
-  assert.eq(actions_opts.title, "Android Build", "targets select title")
+  assert.eq(actions_opts.title, "Android Build Variants", "targets select title")
 end
 
 local function targets_menu_on_select_sets_block()
   local actions_opts = targets_menu_on_select_actions_opts()
   local blocks = actions_opts.blocks or {}
-  assert.eq(blocks[1] and blocks[1].title, "Build", "targets select block")
+  assert.eq(blocks[1] and blocks[1].title, "Build Variants", "targets select block")
 end
 
 local function targets_menu_on_search_opens_actions()
@@ -89,7 +89,7 @@ local function targets_menu_on_search_opens_actions()
   assert.table_eq(
     result.actions_state.opts,
     {
-      title = "Android Build",
+      title = "Android Build Variants",
       blocks = { block },
       default_query = "b",
     },

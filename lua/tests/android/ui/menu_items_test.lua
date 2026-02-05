@@ -85,9 +85,30 @@ local function exposes_nested_sections()
   local titles = block_titles(blocks)
   assert.table_eq(
     titles,
-    { "Shortcuts", "Configs", "Run", "Build", "Devices", "Apps", "Logs" },
+    {
+      "Quick Access",
+      "Run Configurations",
+      "Run",
+      "Build Variants",
+      "Device Manager",
+      "ADB",
+      "Logcat",
+    },
     "block titles"
   )
+end
+
+local function blocks_include_descriptions()
+  local blocks = load_blocks({
+    root = "/workspace",
+    gradle = { root = "/workspace" },
+    android = { root = "/workspace" },
+  }, "Android")
+
+  for _, block in ipairs(blocks or {}) do
+    assert.eq(type(block.desc), "string", "block description type")
+    assert.is_true(block.desc ~= "", "block description present")
+  end
 end
 
 local function run_block_uses_resolved_label()
@@ -167,7 +188,7 @@ local function config_block_hides_gradle_tasks()
     },
   })
 
-  local configs = find_block(blocks, "Configs")
+  local configs = find_block(blocks, "Run Configurations")
   local ids = {}
   for _, item in ipairs(configs.items or {}) do
     ids[item.id] = true
@@ -221,7 +242,7 @@ local function includes_logcat_in_logs()
     android = { root = "/workspace" },
   }, "Android")
 
-  local logs = find_block(blocks, "Logs")
+  local logs = find_block(blocks, "Logcat")
   local found = false
   for _, item in ipairs(logs.items or {}) do
     if item.id == "logcat" then
@@ -240,7 +261,7 @@ local function includes_shortcuts_block()
     android = { root = "/workspace" },
   }, "Android")
 
-  local shortcuts = find_block(blocks, "Shortcuts")
+  local shortcuts = find_block(blocks, "Quick Access")
   local ids = {}
   for _, item in ipairs(shortcuts.items or {}) do
     ids[item.id] = true
@@ -257,7 +278,7 @@ local function includes_health_check_in_logs()
     android = { root = "/workspace" },
   }, "Android")
 
-  local logs = find_block(blocks, "Logs")
+  local logs = find_block(blocks, "Logcat")
   local found = false
   for _, item in ipairs(logs.items or {}) do
     if item.id == "health_check" then
@@ -330,6 +351,7 @@ function M.run()
   run_block_uses_resolved_label()
   run_block_includes_stop()
   run_block_omits_select()
+  blocks_include_descriptions()
   config_block_hides_gradle_tasks()
   hides_ios_actions_without_ios()
   shows_ios_actions_with_ios()

@@ -14,7 +14,7 @@ The plugin detects configs from providers in this order:
 - Gradle task: task-based entries for quick execution.
 - Shell: entries defined in the JSON file.
 
-Configs are sorted by provider priority and label. Gradle task configs are
+Run configurations are sorted by provider priority and label. Gradle task configs are
 available via the Gradle tasks menu but hidden from the main run config list
 to keep the picker focused.
 

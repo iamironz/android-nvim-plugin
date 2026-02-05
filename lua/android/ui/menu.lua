@@ -52,7 +52,7 @@ local function tools_search_title(blocks)
     local block_title = blocks[1].title or "Tools"
     return "Android " .. block_title
   end
-  return "Android Tools"
+  return "Android Device Manager & ADB"
 end
 
 function M.show_main_menu()
@@ -98,12 +98,12 @@ end
 
 function M.show_targets_menu(opts)
   local options = opts or {}
-  local block = menu_items.block_by_title("Build")
+  local block = menu_items.block_by_title("Build Variants")
   if not block then
     return
   end
   local hub_opts = {
-    title = "Android Build",
+    title = "Android Build Variants",
     blocks = { block },
   }
   local function reopen_hub()
@@ -116,7 +116,7 @@ function M.show_targets_menu(opts)
     end
     hub_opts.initial_index = 1
     actions_picker.open({
-      title = "Android Build",
+      title = "Android Build Variants",
       blocks = { selected },
       on_cancel = reopen_hub,
     })
@@ -124,7 +124,7 @@ function M.show_targets_menu(opts)
   hub_opts.on_search = function(char)
     hub_opts.initial_index = 1
     actions_picker.open({
-      title = "Android Build",
+      title = "Android Build Variants",
       blocks = { block },
       default_query = char,
       on_cancel = reopen_hub,
@@ -141,8 +141,8 @@ function M.show_tools_menu(opts)
   if block then
     blocks = { block }
   else
-    local devices = menu_items.block_by_title("Devices")
-    local apps = menu_items.block_by_title("Apps")
+    local devices = menu_items.block_by_title("Device Manager")
+    local apps = menu_items.block_by_title("ADB")
     if devices then
       table.insert(blocks, devices)
     end
@@ -154,7 +154,7 @@ function M.show_tools_menu(opts)
     return
   end
   local hub_opts = {
-    title = "Android Tools",
+    title = tools_search_title(blocks),
     blocks = blocks,
   }
   local function reopen_hub()

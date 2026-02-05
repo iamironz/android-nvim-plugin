@@ -173,7 +173,7 @@ local function build_prompt_variant_cancel_reopens_module_picker()
     build.build_prompt()
 
     assert.eq(picker_titles[1], "Gradle modules", "module picker first")
-    assert.eq(picker_titles[2], "Build variants", "variant picker next")
+    assert.eq(picker_titles[2], "Build Variants", "variant picker next")
     assert.eq(picker_titles[3], "Gradle modules", "module picker reopened")
   end)
 end

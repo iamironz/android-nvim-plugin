@@ -3,10 +3,12 @@ local M = {}
 local function block_label(block)
   local title = block and block.title or ""
   local count = block and block.items and #block.items or 0
+  local desc = block and block.desc or ""
+  local suffix = desc ~= "" and string.format(" | %s", desc) or ""
   if count > 0 then
-    return string.format("%s (%d)", title, count)
+    return string.format("%s (%d)%s", title, count, suffix)
   end
-  return title
+  return string.format("%s%s", title, suffix)
 end
 
 local function build_search_keys()

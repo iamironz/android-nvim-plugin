@@ -6,8 +6,8 @@ local function build_lines_include_summary_and_blocks()
   package.loaded["android.ui.hub"] = nil
   local hub = require("android.ui.hub")
   local lines = hub._build_lines({ "Summary", "Workspace: /app" }, {
-    { title = "Build", items = { 1, 2 } },
-    { title = "Devices", items = {} },
+    { title = "Build Variants", desc = "Builds and variants", items = { 1, 2 } },
+    { title = "Device Manager", desc = "Devices and emulators", items = {} },
   })
 
   local text = table.concat(lines, "|")
@@ -15,8 +15,8 @@ local function build_lines_include_summary_and_blocks()
     "Summary",
     "Workspace: /app",
     "",
-    "Build (2)",
-    "Devices",
+    "Build Variants (2) | Builds and variants",
+    "Device Manager | Devices and emulators",
   }, "|")
   assert.eq(text, expected, "hub lines")
 end
@@ -81,7 +81,7 @@ local function hub_calls_on_cancel_on_escape()
   package.loaded["android.ui.hub"] = nil
   local hub = require("android.ui.hub")
   hub.open({
-    blocks = { { title = "Build", items = { 1 } } },
+    blocks = { { title = "Build Variants", desc = "Builds and variants", items = { 1 } } },
     on_cancel = function()
       called = true
     end,
