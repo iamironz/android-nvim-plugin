@@ -65,10 +65,23 @@ function M.select_device(opts)
     return
   end
 
+  local state = context.load_state(workspace.root)
+  local saved_serial = defaults.device_defaults(state).serial
+  local default = nil
+  if type(saved_serial) == "string" and saved_serial ~= "" then
+    for _, entry in ipairs(entries) do
+      if entry.value == saved_serial then
+        default = entry.label
+        break
+      end
+    end
+  end
+
   picker.select_from_list({
     title = "Devices",
     items = entries,
     format = function(entry) return entry.label end,
+    default = default,
     on_select = function(serial)
       local state = context.load_state(workspace.root)
       local next_state = defaults.apply_device_defaults(state, serial)
@@ -100,9 +113,22 @@ function M.select_avd(on_selected, opts)
     return
   end
 
+  local state = context.load_state(workspace.root)
+  local saved_avd = defaults.avd_defaults(state).name
+  local default = nil
+  if type(saved_avd) == "string" and saved_avd ~= "" then
+    for _, name in ipairs(avds) do
+      if name == saved_avd then
+        default = saved_avd
+        break
+      end
+    end
+  end
+
   picker.select_from_list({
     title = "Emulator AVDs",
     items = avds,
+    default = default,
     on_select = function(name)
       local state = context.load_state(workspace.root)
       local next_state = defaults.apply_avd_defaults(state, name)

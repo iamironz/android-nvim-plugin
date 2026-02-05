@@ -14,6 +14,25 @@ local function parses_modules_from_settings_includes()
   assert.table_eq(modules, { ":app", ":feature:chat", ":feature:core", ":lib" }, "modules")
 end
 
+local function parses_modules_from_multiline_includes()
+  local workspace = require("android.gradle.workspace")
+  local modules = workspace.parse_settings({
+    "include ':app',",
+    "  ':feature:chat',",
+    "  ':feature:core'",
+    "include(",
+    "  \":lib\",",
+    "  \":lib:core\"",
+    ")",
+  })
+
+  assert.table_eq(
+    modules,
+    { ":app", ":feature:chat", ":feature:core", ":lib", ":lib:core" },
+    "modules multiline"
+  )
+end
+
 local function finds_workspace_root_from_settings()
   local workspace = require("android.gradle.workspace")
   local exists = function(path)
@@ -43,6 +62,7 @@ end
 
 function M.run()
   parses_modules_from_settings_includes()
+  parses_modules_from_multiline_includes()
   finds_workspace_root_from_settings()
   detects_workspace_root_and_modules()
 end

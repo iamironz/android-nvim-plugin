@@ -91,6 +91,14 @@ function M.new(opts)
     return cache.fetch(root, "tasks", stamp, loader)
   end
 
+  function api.jvm_run_modules(root, modules, loader)
+    if not root or root == "" then
+      return loader()
+    end
+    local stamp = state_cache.files_stamp(stamp_paths(root, modules), stat)
+    return cache.fetch(root, "jvm_run_modules", stamp, loader)
+  end
+
   function api.variants(root, modules, loader)
     if not root or root == "" then
       return loader()

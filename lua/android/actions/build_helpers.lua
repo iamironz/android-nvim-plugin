@@ -1,6 +1,7 @@
 local M = {}
 
 local config = require("android.config")
+local action_defaults = require("android.actions.defaults")
 local gradle_build = require("android.build.gradle")
 local quickfix = require("android.build.quickfix")
 local stream = require("android.build.stream")
@@ -63,6 +64,43 @@ function M.append_args(base, extra)
   return out
 end
 
+local function merge_modules(preferred, modules)
+  local ordered = {}
+  local seen = {}
+  if preferred and preferred ~= "" then
+    table.insert(ordered, preferred)
+    seen[preferred] = true
+  end
+  for _, module in ipairs(modules or {}) do
+    if module and module ~= "" and not seen[module] then
+      table.insert(ordered, module)
+      seen[module] = true
+    end
+  end
+  return ordered
+end
+
+local function parse_variants_from_result(result)
+  if not result or not result.ok then
+    return {}
+  end
+  local lines = vim.split(result.stdout or "", "\n", { plain = true })
+  return gradle_variants.parse(lines)
+end
+
+local function fetch_variants_from_modules(root, runner, modules)
+  local preferred = action_defaults.select_module(modules)
+  for _, module in ipairs(merge_modules(preferred, modules)) do
+    local task = module .. ":tasks"
+    local result = M.run_gradle(root, { task, "--all" }, runner)
+    local variants = parse_variants_from_result(result)
+    if #variants > 0 then
+      return variants
+    end
+  end
+  return {}
+end
+
 function M.build_command(root, extra_args)
   return M.append_args(M.resolve_gradle_command(root), extra_args)
 end
@@ -107,7 +145,11 @@ function M.fetch_variants(root, runner)
       exec_runner,
       { modules = modules }
     )
-    return gradle_variants.parse(lines)
+    local variants = gradle_variants.parse(lines)
+    if #variants > 0 then
+      return variants
+    end
+    return fetch_variants_from_modules(root, exec_runner, modules)
   end)
 end
 

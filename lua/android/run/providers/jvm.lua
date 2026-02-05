@@ -36,14 +36,28 @@ local function detect_run_tasks(lines)
   return result
 end
 
+local function load_run_modules(root, runner)
+  local modules = cache.modules(root, function()
+    return gradle_workspace.load_modules(root)
+  end)
+  return cache.jvm_run_modules(root, modules, function()
+    local lines = load_tasks(root, runner)
+    return detect_run_tasks(lines)
+  end)
+end
+
 function M.detect(workspace, _, opts)
   if not workspace or not workspace.gradle then
     return {}
   end
 
   local runner = (opts and opts.runner) or runner_module.new()
-  local lines = (opts and opts.tasks) or load_tasks(workspace.root, runner)
-  local modules = detect_run_tasks(lines)
+  local modules
+  if opts and opts.tasks then
+    modules = detect_run_tasks(opts.tasks)
+  else
+    modules = load_run_modules(workspace.root, runner)
+  end
   local configs = {}
   for _, module in ipairs(modules) do
     local task = module .. ":run"

@@ -47,6 +47,19 @@ local function build_registry(store)
     return configs.from_workspace(workspace, { state = state })
   end
 
+  function registry.snapshot(workspace)
+    local state = load_state(workspace)
+    local list = configs.from_workspace(workspace, { state = state })
+    local current_id = selected_id(state)
+    local selected = configs.find(list, current_id)
+    local resolved = selected or configs.default(list)
+    if resolved and resolved.id and resolved.id ~= current_id then
+      local next_state = apply_selected_id(state, resolved.id)
+      save_state(workspace, next_state)
+    end
+    return { list = list, current = resolved }
+  end
+
   function registry.resolve(workspace)
     local state = load_state(workspace)
     local list = configs.from_workspace(workspace, { state = state })
@@ -88,6 +101,10 @@ end
 
 function M.select(workspace, config_id)
   return default_registry.select(workspace, config_id)
+end
+
+function M.snapshot(workspace)
+  return default_registry.snapshot(workspace)
 end
 
 return M

@@ -190,6 +190,51 @@ local function set_keymaps(buf, close_window, select_current, on_search, handle_
   end
 end
 
+local function set_buffer_lines(buf, lines)
+  if not buf or not vim.api.nvim_buf_is_valid(buf) then
+    return
+  end
+  vim.bo[buf].modifiable = true
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.bo[buf].modifiable = false
+end
+
+local function resize_window(win, lines, title)
+  if not win or not vim.api.nvim_win_is_valid(win) then
+    return
+  end
+  local width, height = calc_dimensions(lines, title)
+  local row, col = center_position(width, height)
+  vim.api.nvim_win_set_config(win, {
+    relative = "editor",
+    width = width,
+    height = height,
+    row = row,
+    col = col,
+    style = "minimal",
+    border = "rounded",
+    title = title,
+  })
+end
+
+local function clamp_cursor(win, lines)
+  if not win or not vim.api.nvim_win_is_valid(win) then
+    return
+  end
+  local cursor = vim.api.nvim_win_get_cursor(win)
+  local line = cursor[1]
+  local max_line = #lines
+  if max_line < 1 then
+    max_line = 1
+  end
+  if line < 1 then
+    line = 1
+  elseif line > max_line then
+    line = max_line
+  end
+  vim.api.nvim_win_set_cursor(win, { line, 0 })
+end
+
 function M._build_lines(summary_lines, blocks)
   return build_lines(summary_lines, blocks)
 end
@@ -256,6 +301,33 @@ function M.open(opts)
   end
 
   set_keymaps(buf, close_window, select_current, on_search, handle_search, on_cancel)
+
+  return {
+    buf = buf,
+    win = win,
+    close = close_window,
+  }
+end
+
+function M.update(handle, opts)
+  local options = opts or {}
+  local buf = handle and handle.buf or nil
+  local win = handle and handle.win or nil
+  if not buf or not win then
+    return
+  end
+  if not vim.api.nvim_buf_is_valid(buf) or not vim.api.nvim_win_is_valid(win) then
+    return
+  end
+
+  local blocks = options.blocks or {}
+  local summary_lines = options.summary_lines or {}
+  local title = options.title or "Android Hub"
+
+  local lines = build_lines(summary_lines, blocks)
+  set_buffer_lines(buf, lines)
+  resize_window(win, lines, title)
+  clamp_cursor(win, lines)
 end
 
 return M

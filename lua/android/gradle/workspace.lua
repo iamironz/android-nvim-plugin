@@ -58,20 +58,41 @@ end
 
 function M.parse_settings(lines)
   local modules = {}
+  local in_include = false
+  local in_parens = false
   for _, line in ipairs(lines or {}) do
     local trimmed = line:match("^%s*(.-)%s*$") or ""
+    local inspected = trimmed:gsub("%s*//.*$", ""):gsub("%s*#.*$", "")
     if trimmed:match("^//") or trimmed:match("^#") then
       goto continue
     end
-    if not trimmed:match("^%s*include%s*") then
-      goto continue
-    end
-    if trimmed:match("^%s*includeBuild%s*") then
+    if inspected:match("^%s*includeBuild%s*") then
       goto continue
     end
 
-    for module in trimmed:gmatch("['\"](:[^'\"]+)['\"]") do
-      modules[module] = true
+    local include_line = inspected:match("^%s*include%s*") ~= nil
+    if include_line then
+      in_include = true
+      if inspected:find("%(") and not inspected:find("%)") then
+        in_parens = true
+      end
+    end
+
+    if in_include then
+      for module in inspected:gmatch("['\"](:[^'\"]+)['\"]") do
+        modules[module] = true
+      end
+    end
+
+    if in_include then
+      if in_parens then
+        if inspected:find("%)") then
+          in_parens = false
+          in_include = false
+        end
+      elseif not inspected:match(",%s*$") then
+        in_include = false
+      end
     end
 
     ::continue::

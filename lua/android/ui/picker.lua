@@ -22,6 +22,37 @@ local function build_results(items)
   return results
 end
 
+local function find_default_selection_index(results, format, default)
+  if default == nil or default == "" then
+    return nil
+  end
+
+  for index, entry in ipairs(results or {}) do
+    if entry.value == default or entry.label == default then
+      return index
+    end
+
+    local label = build_label(entry, format)
+    if label == default then
+      return index
+    end
+  end
+
+  return nil
+end
+
+local function move_default_to_front(results, format, default)
+  local index = find_default_selection_index(results, format, default)
+  if not index or index <= 1 then
+    return results
+  end
+
+  local copy = vim.deepcopy(results)
+  local entry = table.remove(copy, index)
+  table.insert(copy, 1, entry)
+  return copy
+end
+
 local function fallback_filter_input(options)
   if not vim.ui or not vim.ui.input then
     vim.notify("vim.ui.input not available", vim.log.levels.WARN)
@@ -60,6 +91,9 @@ local function fallback_select_from_list(options)
   end
 
   local results = build_results(items)
+  if options.default ~= nil and options.default ~= "" then
+    results = move_default_to_front(results, options.format, options.default)
+  end
   vim.ui.select(results, {
     prompt = options.title or "Select",
     format_item = function(entry)
@@ -203,6 +237,7 @@ function M.select_from_list(opts)
   end
 
   local results = build_results(items)
+  local default_selection_index = find_default_selection_index(results, format, default)
 
   local theme = themes.get_dropdown({})
   if options.file_ignore_patterns ~= nil then
@@ -212,7 +247,7 @@ function M.select_from_list(opts)
   pickers
     .new(theme, {
       prompt_title = title,
-      default_text = default,
+      default_selection_index = default_selection_index,
       finder = finders.new_table({
         results = results,
         entry_maker = function(entry)

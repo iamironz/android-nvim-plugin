@@ -16,28 +16,63 @@ local emulator = require("android.devices.emulator")
 local discovery = require("android.sdk.discovery")
 local wait = require("android.actions.wait")
 
-local function prompt_for_variant(root, runner, on_selected, opts)
+local function prompt_for_variant(root, runner, default_variant, on_selected, opts)
   local variants = build_helpers.fetch_variants(root, runner)
   if #variants == 0 then
     vim.notify("No Gradle variants found", vim.log.levels.WARN)
     return
   end
   local options = opts or {}
+
+  local default = nil
+  if type(default_variant) == "string" and default_variant ~= "" then
+    for _, variant in ipairs(variants) do
+      if variant == default_variant then
+        default = default_variant
+        break
+      end
+    end
+  end
   picker.select_from_list({
     title = "Build variants",
     items = variants,
+    default = default,
     on_select = on_selected,
     on_cancel = options.on_cancel,
   })
 end
 
-local function prompt_for_module(workspace, on_selected, opts)
+local function module_default_text(entries, default_module)
+  if type(default_module) ~= "string" then
+    return nil
+  end
+
+  local match = nil
+  for _, entry in ipairs(entries or {}) do
+    if entry and entry.value == default_module then
+      match = entry
+      break
+    end
+  end
+
+  if not match then
+    return nil
+  end
+
+  if default_module == "" then
+    return match.label
+  end
+  return default_module
+end
+
+local function prompt_for_module(workspace, default_module, on_selected, opts)
   local entries = build_helpers.module_entries(workspace.modules)
   local options = opts or {}
   picker.select_from_list({
     title = "Gradle modules",
     items = entries,
     format = function(entry) return entry.label end,
+    default = module_default_text(entries, default_module),
     on_select = on_selected,
     on_cancel = options.on_cancel,
   })
@@ -49,7 +84,10 @@ function M.select_module(opts)
     return
   end
 
-  prompt_for_module(workspace, function(module)
+  local state = context.load_state(workspace.root)
+  local build = defaults.build_defaults(state)
+
+  prompt_for_module(workspace, build.module, function(module)
     local state = context.load_state(workspace.root)
     local build = defaults.build_defaults(state)
     local next_state = defaults.apply_build_defaults(state, module, build.variant)
@@ -69,7 +107,10 @@ function M.select_variant(opts)
   end
 
   local runner = runner_module.new()
-  prompt_for_variant(workspace.root, runner, function(variant)
+  local state = context.load_state(workspace.root)
+  local build = defaults.build_defaults(state)
+
+  prompt_for_variant(workspace.root, runner, build.variant, function(variant)
     local state = context.load_state(workspace.root)
     local build = defaults.build_defaults(state)
     local next_state = defaults.apply_build_defaults(state, build.module, variant)
@@ -88,9 +129,12 @@ function M.build_prompt(opts)
 
   local runner = runner_module.new()
   local options = opts or {}
+  local state = context.load_state(workspace.root)
+  local build = defaults.build_defaults(state)
+
   local open_module_picker
   local function open_variant_picker(module)
-    prompt_for_variant(workspace.root, runner, function(variant)
+    prompt_for_variant(workspace.root, runner, build.variant, function(variant)
       local state = context.load_state(workspace.root)
       build_and_deploy(workspace, module, variant, runner, state)
     end, {
@@ -101,7 +145,7 @@ function M.build_prompt(opts)
   end
 
   open_module_picker = function()
-    prompt_for_module(workspace, function(module)
+    prompt_for_module(workspace, build.module, function(module)
       open_variant_picker(module)
     end, {
       on_cancel = options.on_cancel,

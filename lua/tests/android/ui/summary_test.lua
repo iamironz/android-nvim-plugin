@@ -8,7 +8,7 @@ local function summary_lines_for(stubs)
   stubs_helper.with_stubs(stubs, function()
     package.loaded["android.ui.summary"] = nil
     local summary = require("android.ui.summary")
-    lines = summary.lines()
+    lines = summary.lines({ include_adb = false })
   end)
   return lines
 end
@@ -62,6 +62,9 @@ local function build_summary_stubs(opts)
     ["android.devices.adb"] = {
       list = function()
         return opts.devices or {}
+      end,
+      parse_devices = function()
+        return {}
       end,
     },
   }
@@ -133,9 +136,8 @@ local function summary_lines_include_state()
     "",
     "Devices",
     "  Device: device-1",
-    "  Devices: emulator-5554",
+    "  Devices: none",
     "  AVD: Pixel_5",
-    "  Emulator: running",
     "",
     "Logcat",
     "  Logcat: com.example",

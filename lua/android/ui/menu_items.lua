@@ -130,10 +130,9 @@ local function format_config_desc(config)
   return table.concat(parts, " · ")
 end
 
-local function config_items(workspace)
-  local list = run_registry.list(workspace) or {}
-  local current = run_registry.resolve(workspace)
-  local current_id = current and current.id or nil
+local function config_items(snapshot)
+  local list = (snapshot and snapshot.list) or {}
+  local current_id = snapshot and snapshot.current and snapshot.current.id or nil
   local items = {}
   for _, config in ipairs(list) do
     if config.type ~= "gradle_task" then
@@ -349,7 +348,8 @@ end
 
 function M.top_level_blocks(workspace)
   local resolved = resolve_workspace(workspace)
-  local run_config = resolved and run_registry.resolve(resolved) or nil
+  local snapshot = resolved and run_registry.snapshot(resolved) or {}
+  local run_config = snapshot.current
   local flags = menu_flags(resolved, run_config)
 
   return {
@@ -359,7 +359,7 @@ function M.top_level_blocks(workspace)
     },
     {
       title = "Configs",
-      items = resolved and config_items(resolved) or {},
+      items = resolved and config_items(snapshot) or {},
     },
     {
       title = "Run",

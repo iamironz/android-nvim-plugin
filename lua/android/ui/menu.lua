@@ -35,7 +35,7 @@ local function open_hub_with_nav(hub_opts, mode)
 
   nav.current = hub_opts
   apply_back_handler(hub_opts)
-  hub.open(hub_opts)
+  hub_opts._hub_handle = hub.open(hub_opts)
 end
 
 local function block_index(blocks, block)
@@ -57,9 +57,10 @@ end
 
 function M.show_main_menu()
   local blocks = menu_items.top_level_blocks()
+  local summary_lines, refresh_summary = summary.lines({ mode = "fast" })
   local hub_opts = {
     title = "Android Menu",
-    summary_lines = summary.lines(),
+    summary_lines = summary_lines,
     blocks = blocks,
   }
   local function reopen_hub()
@@ -94,6 +95,18 @@ function M.show_main_menu()
   end
 
   open_hub_with_nav(hub_opts, "root")
+
+  if refresh_summary then
+    refresh_summary(function(updated)
+      if nav.current ~= hub_opts then
+        return
+      end
+      hub_opts.summary_lines = updated
+      if hub_opts._hub_handle then
+        hub.update(hub_opts._hub_handle, hub_opts)
+      end
+    end)
+  end
 end
 
 function M.show_targets_menu(opts)
