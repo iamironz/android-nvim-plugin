@@ -11,7 +11,8 @@
 ## Hub navigation
 
 - Menus open a hub list of sections, and AndroidMenu shows a summary panel at the top.
-- Typing in the hub opens the search overlay with your text, and search is available only after typing.
+- The hub shows explicit section rows like `[1] Run` that can be selected with `<CR>` or number keys.
+- Press `/` to open the search overlay from the hub, or type letters to prefill search.
 - AndroidTargets, AndroidTools, and AndroidActions use the hub list with type-to-search.
 - Press Esc to return to the hub from the actions picker, and `q` closes it.
 - When a submenu opens from the hub shortcuts, Esc returns to the previous hub.

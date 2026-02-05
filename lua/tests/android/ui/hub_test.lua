@@ -15,29 +15,22 @@ local function build_lines_include_summary_and_blocks()
     "Summary",
     "Workspace: /app",
     "",
-    "Build Variants (2) | Builds and variants",
-    "Device Manager | Devices and emulators",
+    "Sections (select with <CR> or [1-2])",
+    "  j/k move | <CR> open | / search | Esc back | q close",
+    "",
+    "[1] Build Variants (2) | Builds and variants",
+    "[2] Device Manager | Devices and emulators",
   }, "|")
   assert.eq(text, expected, "hub lines")
 end
 
-local function search_keys_include_letters_and_digits()
+local function search_keys_include_letters_without_navigation()
   package.loaded["android.ui.hub"] = nil
   local hub = require("android.ui.hub")
   local keys = hub._search_keys()
   assert.table_eq(
     keys,
     {
-      "0",
-      "1",
-      "2",
-      "3",
-      "4",
-      "5",
-      "6",
-      "7",
-      "8",
-      "9",
       "a",
       "b",
       "c",
@@ -52,7 +45,6 @@ local function search_keys_include_letters_and_digits()
       "n",
       "o",
       "p",
-      "q",
       "r",
       "s",
       "t",
@@ -129,7 +121,7 @@ local function initial_line_uses_block_index()
   package.loaded["android.ui.hub"] = nil
   local hub = require("android.ui.hub")
   local line = hub._initial_line({ "Summary", "" }, 3, 2)
-  assert.eq(line, 5, "initial line")
+  assert.eq(line, 8, "initial line")
 end
 
 local function hub_select_uses_updated_summary_lines()
@@ -148,7 +140,7 @@ local function hub_select_uses_updated_summary_lines()
     end
   end
   vim.api.nvim_win_get_cursor = function()
-    return { 4, 0 }
+    return { 7, 0 }
   end
 
   local ok, err = pcall(function()
@@ -193,7 +185,7 @@ local function hub_search_uses_updated_summary_lines()
     end
   end
   vim.api.nvim_win_get_cursor = function()
-    return { 4, 0 }
+    return { 7, 0 }
   end
 
   local ok, err = pcall(function()
@@ -222,14 +214,181 @@ local function hub_search_uses_updated_summary_lines()
   assert.eq(searched_index, 1, "search uses updated summary")
 end
 
+local function hub_enter_on_summary_line_does_not_close()
+  local selected = false
+  local reason = nil
+  local captured = {}
+  local original_keymap_set = vim.keymap.set
+  local original_cursor = vim.api.nvim_win_get_cursor
+
+  vim.keymap.set = function(_, lhs, rhs)
+    if lhs == "<CR>" then
+      captured.enter = rhs
+    end
+  end
+  vim.api.nvim_win_get_cursor = function()
+    return { 1, 0 }
+  end
+
+  local ok, err = pcall(function()
+    package.loaded["android.ui.hub"] = nil
+    local hub = require("android.ui.hub")
+    local handle = hub.open({
+      summary_lines = { "Summary" },
+      blocks = {
+        { title = "Run", desc = "Runs", items = { 1 } },
+      },
+      on_select = function()
+        selected = true
+      end,
+      on_close = function(value)
+        reason = value
+      end,
+    })
+    if captured.enter then
+      captured.enter()
+    end
+    if handle and handle.close then
+      handle.close()
+    end
+  end)
+
+  vim.keymap.set = original_keymap_set
+  vim.api.nvim_win_get_cursor = original_cursor
+
+  if not ok then
+    error(err)
+  end
+
+  assert.eq(selected, false, "summary line not selectable")
+  assert.eq(reason, nil, "summary line does not close")
+end
+
+local function hub_number_shortcut_selects_block()
+  local selected = nil
+  local captured = {}
+  local original_keymap_set = vim.keymap.set
+
+  vim.keymap.set = function(_, lhs, rhs)
+    captured[lhs] = rhs
+  end
+
+  local ok, err = pcall(function()
+    package.loaded["android.ui.hub"] = nil
+    local hub = require("android.ui.hub")
+    hub.open({
+      blocks = {
+        { title = "Run", items = { 1 } },
+        { title = "ADB", items = { 1 } },
+      },
+      on_select = function(block)
+        selected = block and block.title or nil
+      end,
+    })
+    if captured["2"] then
+      captured["2"]()
+    end
+  end)
+
+  vim.keymap.set = original_keymap_set
+
+  if not ok then
+    error(err)
+  end
+
+  assert.eq(selected, "ADB", "number shortcut select")
+end
+
+local function hub_slash_opens_search_without_default_text()
+  local search_char = nil
+  local search_index = nil
+  local captured = {}
+  local original_keymap_set = vim.keymap.set
+  local original_cursor = vim.api.nvim_win_get_cursor
+
+  vim.keymap.set = function(_, lhs, rhs)
+    captured[lhs] = rhs
+  end
+  vim.api.nvim_win_get_cursor = function()
+    return { 4, 0 }
+  end
+
+  local ok, err = pcall(function()
+    package.loaded["android.ui.hub"] = nil
+    local hub = require("android.ui.hub")
+    hub.open({
+      blocks = {
+        { title = "Run", items = { 1 } },
+        { title = "ADB", items = { 1 } },
+      },
+      on_search = function(char, index)
+        search_char = char
+        search_index = index
+      end,
+    })
+    if captured["/"] then
+      captured["/"]()
+    end
+  end)
+
+  vim.keymap.set = original_keymap_set
+  vim.api.nvim_win_get_cursor = original_cursor
+
+  if not ok then
+    error(err)
+  end
+
+  assert.eq(search_char, "", "slash search query")
+  assert.eq(search_index, 1, "slash search index")
+end
+
+local function hub_q_key_keeps_close_behavior_when_search_enabled()
+  local reason = nil
+  local captured = {}
+  local original_keymap_set = vim.keymap.set
+
+  vim.keymap.set = function(_, lhs, rhs)
+    captured[lhs] = rhs
+  end
+
+  local ok, err = pcall(function()
+    package.loaded["android.ui.hub"] = nil
+    local hub = require("android.ui.hub")
+    hub.open({
+      blocks = {
+        { title = "Run", items = { 1 } },
+      },
+      on_search = function() end,
+      on_close = function(value)
+        reason = value
+      end,
+    })
+    if captured.q then
+      captured.q()
+    end
+  end)
+
+  vim.keymap.set = original_keymap_set
+
+  if not ok then
+    error(err)
+  end
+
+  assert.eq(reason, "close", "q closes hub")
+end
+
 function M.run()
   build_lines_include_summary_and_blocks()
-  search_keys_include_letters_and_digits()
+  search_keys_include_letters_without_navigation()
   hub_calls_on_cancel_on_escape()
   hub_calls_on_close_with_cancel_reason()
   initial_line_uses_block_index()
   hub_select_uses_updated_summary_lines()
   hub_search_uses_updated_summary_lines()
+  hub_enter_on_summary_line_does_not_close()
+  hub_number_shortcut_selects_block()
+  hub_slash_opens_search_without_default_text()
+  hub_q_key_keeps_close_behavior_when_search_enabled()
 end
 
 return M

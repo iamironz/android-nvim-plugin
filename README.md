@@ -58,7 +58,8 @@ bag of problems with a better keyboard.
 
 ## Features
 
-- **Hub menus.** Summary panel, type-to-search, actions picker, Telescope support
+- **Hub menus.** Summary panel, explicit section shortcuts (`[1]`, `[2]`, ...),
+  visible controls, type-to-search/actions picker, Telescope support
   with vim.ui fallback, and Esc back navigation. See
   [docs/commands.md#hub-navigation](docs/commands.md#hub-navigation) and
   [docs/troubleshooting.md#telescope-missing](docs/troubleshooting.md#telescope-missing).

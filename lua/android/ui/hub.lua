@@ -1,29 +1,54 @@
 local M = {}
 
-local function block_label(block)
+local function block_label(block, index)
   local title = block and block.title or ""
   local count = block and block.items and #block.items or 0
   local desc = block and block.desc or ""
   local suffix = desc ~= "" and string.format(" | %s", desc) or ""
+  local prefix = index and string.format("[%d] ", index) or ""
   if count > 0 then
-    return string.format("%s (%d)%s", title, count, suffix)
+    return string.format("%s%s (%d)%s", prefix, title, count, suffix)
   end
-  return string.format("%s%s", title, suffix)
+  return string.format("%s%s%s", prefix, title, suffix)
 end
 
 local function build_search_keys()
   local keys = {}
-  for digit = 0, 9 do
-    keys[#keys + 1] = tostring(digit)
-  end
   for code = string.byte("a"), string.byte("z") do
     local key = string.char(code)
-    -- Keep j/k available for default navigation.
-    if key ~= "j" and key ~= "k" then
+    -- Keep common navigation/close keys available.
+    if key ~= "j" and key ~= "k" and key ~= "q" then
       keys[#keys + 1] = key
     end
   end
   return keys
+end
+
+local function shortcut_label(block_count)
+  local max_shortcut = math.min(9, block_count or 0)
+  if max_shortcut <= 0 then
+    return nil
+  end
+  if max_shortcut == 1 then
+    return "1"
+  end
+  return string.format("1-%d", max_shortcut)
+end
+
+local function section_header_lines(blocks)
+  local count = #(blocks or {})
+  if count == 0 then
+    return {
+      "Sections",
+      "  No sections available",
+    }
+  end
+  local shortcut = shortcut_label(count)
+  return {
+    string.format("Sections (select with <CR> or [%s])", shortcut),
+    "  j/k move | <CR> open | / search | Esc back | q close",
+    "",
+  }
 end
 
 local function build_lines(summary_lines, blocks)
@@ -31,11 +56,15 @@ local function build_lines(summary_lines, blocks)
   for _, line in ipairs(summary_lines or {}) do
     lines[#lines + 1] = line
   end
-  if summary_lines and #summary_lines > 0 then
+  local headers = section_header_lines(blocks)
+  if summary_lines and #summary_lines > 0 and #headers > 0 then
     lines[#lines + 1] = ""
   end
-  for _, block in ipairs(blocks or {}) do
-    lines[#lines + 1] = block_label(block)
+  for _, line in ipairs(headers) do
+    lines[#lines + 1] = line
+  end
+  for index, block in ipairs(blocks or {}) do
+    lines[#lines + 1] = block_label(block, index)
   end
   return lines
 end
@@ -118,12 +147,13 @@ local function open_window(buf, width, height, row, col, title)
   return win
 end
 
-local function block_start(summary_lines)
+local function block_start(summary_lines, blocks)
   local count = #(summary_lines or {})
-  if count == 0 then
-    return 0
+  if count > 0 then
+    count = count + 1
   end
-  return count + 1
+  count = count + #section_header_lines(blocks)
+  return count
 end
 
 local function current_index(blocks, summary_lines, win)
@@ -132,7 +162,7 @@ local function current_index(blocks, summary_lines, win)
   end
   local cursor = vim.api.nvim_win_get_cursor(win)
   local line_index = cursor[1]
-  local start = block_start(summary_lines)
+  local start = block_start(summary_lines, blocks)
   local block_index = line_index - start
   if block_index < 1 or block_index > #blocks then
     return nil
@@ -140,7 +170,8 @@ local function current_index(blocks, summary_lines, win)
   return block_index
 end
 
-local function initial_line(summary_lines, block_count, initial_index)
+local function initial_line(summary_lines, blocks, initial_index)
+  local block_count = #(blocks or {})
   if block_count == 0 then
     return 1
   end
@@ -150,14 +181,14 @@ local function initial_line(summary_lines, block_count, initial_index)
   elseif index > block_count then
     index = block_count
   end
-  return block_start(summary_lines) + index
+  return block_start(summary_lines, blocks) + index
 end
 
 local function set_initial_cursor(win, lines, summary_lines, blocks, initial_index)
   if #lines == 0 or #blocks == 0 then
     return
   end
-  local line = initial_line(summary_lines, #blocks, initial_index)
+  local line = initial_line(summary_lines, blocks, initial_index)
   if line > #lines then
     line = #lines
   elseif line < 1 then
@@ -166,7 +197,16 @@ local function set_initial_cursor(win, lines, summary_lines, blocks, initial_ind
   vim.api.nvim_win_set_cursor(win, { line, 0 })
 end
 
-local function set_keymaps(buf, close_window, select_current, on_search, handle_search, on_cancel)
+local function set_keymaps(
+  buf,
+  block_count,
+  close_window,
+  select_current,
+  select_by_index,
+  on_search,
+  handle_search,
+  on_cancel
+)
   local function handle_cancel()
     close_window("cancel")
     if on_cancel then
@@ -179,7 +219,18 @@ local function set_keymaps(buf, close_window, select_current, on_search, handle_
   end, { buffer = buf, silent = true })
   vim.keymap.set("n", "<Esc>", handle_cancel, { buffer = buf, silent = true })
   vim.keymap.set("n", "<CR>", select_current, { buffer = buf, silent = true })
+  local max_shortcut = math.min(9, block_count or 0)
+  for index = 1, max_shortcut do
+    local shortcut = tostring(index)
+    local select_index = index
+    vim.keymap.set("n", shortcut, function()
+      select_by_index(select_index)
+    end, { buffer = buf, silent = true })
+  end
   if on_search then
+    vim.keymap.set("n", "/", function()
+      handle_search("")
+    end, { buffer = buf, silent = true })
     for _, key in ipairs(build_search_keys()) do
       local map_key = key
       vim.keymap.set("n", map_key, function()
@@ -243,7 +294,11 @@ function M._search_keys()
 end
 
 function M._initial_line(summary_lines, block_count, initial_index)
-  return initial_line(summary_lines, block_count, initial_index)
+  local blocks = {}
+  for _ = 1, block_count do
+    blocks[#blocks + 1] = {}
+  end
+  return initial_line(summary_lines, blocks, initial_index)
 end
 
 function M.open(opts)
@@ -289,9 +344,26 @@ function M.open(opts)
 
   local function select_current()
     local index = current_index(state.blocks, state.summary_lines, win)
-    local block = index and state.blocks[index] or nil
+    if not index then
+      return
+    end
+    local block = state.blocks[index]
     close_window()
     if on_select and block then
+      on_select(block, index)
+    end
+  end
+
+  local function select_by_index(index)
+    if not index or index < 1 or index > #state.blocks then
+      return
+    end
+    local block = state.blocks[index]
+    if not block then
+      return
+    end
+    close_window()
+    if on_select then
       on_select(block, index)
     end
   end
@@ -304,7 +376,16 @@ function M.open(opts)
     end
   end
 
-  set_keymaps(buf, close_window, select_current, on_search, handle_search, on_cancel)
+  set_keymaps(
+    buf,
+    #state.blocks,
+    close_window,
+    select_current,
+    select_by_index,
+    on_search,
+    handle_search,
+    on_cancel
+  )
 
   return {
     buf = buf,
