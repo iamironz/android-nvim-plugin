@@ -132,12 +132,104 @@ local function initial_line_uses_block_index()
   assert.eq(line, 5, "initial line")
 end
 
+local function hub_select_uses_updated_summary_lines()
+  local selected = nil
+  local captured = {}
+  local blocks = {
+    { title = "Run", desc = "Runs", items = { 1 } },
+    { title = "ADB", desc = "Android Debug Bridge", items = { 1 } },
+  }
+  local original_keymap_set = vim.keymap.set
+  local original_cursor = vim.api.nvim_win_get_cursor
+
+  vim.keymap.set = function(_, lhs, rhs)
+    if lhs == "<CR>" then
+      captured.enter = rhs
+    end
+  end
+  vim.api.nvim_win_get_cursor = function()
+    return { 4, 0 }
+  end
+
+  local ok, err = pcall(function()
+    package.loaded["android.ui.hub"] = nil
+    local hub = require("android.ui.hub")
+    local handle = hub.open({
+      summary_lines = { "Summary" },
+      blocks = blocks,
+      on_select = function(block)
+        selected = block and block.title or nil
+      end,
+    })
+    hub.update(handle, { summary_lines = { "Summary", "Menu Data" }, blocks = blocks })
+    if captured.enter then
+      captured.enter()
+    end
+  end)
+
+  vim.keymap.set = original_keymap_set
+  vim.api.nvim_win_get_cursor = original_cursor
+
+  if not ok then
+    error(err)
+  end
+
+  assert.eq(selected, "Run", "select uses updated summary")
+end
+
+local function hub_search_uses_updated_summary_lines()
+  local searched_index = nil
+  local captured = {}
+  local blocks = {
+    { title = "Run", desc = "Runs", items = { 1 } },
+    { title = "ADB", desc = "Android Debug Bridge", items = { 1 } },
+  }
+  local original_keymap_set = vim.keymap.set
+  local original_cursor = vim.api.nvim_win_get_cursor
+
+  vim.keymap.set = function(_, lhs, rhs)
+    if lhs == "r" then
+      captured.search = rhs
+    end
+  end
+  vim.api.nvim_win_get_cursor = function()
+    return { 4, 0 }
+  end
+
+  local ok, err = pcall(function()
+    package.loaded["android.ui.hub"] = nil
+    local hub = require("android.ui.hub")
+    local handle = hub.open({
+      summary_lines = { "Summary" },
+      blocks = blocks,
+      on_search = function(_, index)
+        searched_index = index
+      end,
+    })
+    hub.update(handle, { summary_lines = { "Summary", "Menu Data" }, blocks = blocks })
+    if captured.search then
+      captured.search()
+    end
+  end)
+
+  vim.keymap.set = original_keymap_set
+  vim.api.nvim_win_get_cursor = original_cursor
+
+  if not ok then
+    error(err)
+  end
+
+  assert.eq(searched_index, 1, "search uses updated summary")
+end
+
 function M.run()
   build_lines_include_summary_and_blocks()
   search_keys_include_letters_and_digits()
   hub_calls_on_cancel_on_escape()
   hub_calls_on_close_with_cancel_reason()
   initial_line_uses_block_index()
+  hub_select_uses_updated_summary_lines()
+  hub_search_uses_updated_summary_lines()
 end
 
 return M

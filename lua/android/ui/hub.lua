@@ -256,8 +256,9 @@ function M.open(opts)
   local initial_index = options.initial_index
   local on_cancel = options.on_cancel
   local on_close = options.on_close
+  local state = { blocks = blocks, summary_lines = summary_lines }
 
-  local lines = build_lines(summary_lines, blocks)
+  local lines = build_lines(state.summary_lines, state.blocks)
   local buf = create_buffer(lines)
   if not buf then
     return
@@ -270,7 +271,7 @@ function M.open(opts)
     return
   end
 
-  set_initial_cursor(win, lines, summary_lines, blocks, initial_index)
+  set_initial_cursor(win, lines, state.summary_lines, state.blocks, initial_index)
 
   local closed = false
   local function close_window(reason)
@@ -287,8 +288,8 @@ function M.open(opts)
   end
 
   local function select_current()
-    local index = current_index(blocks, summary_lines, win)
-    local block = index and blocks[index] or nil
+    local index = current_index(state.blocks, state.summary_lines, win)
+    local block = index and state.blocks[index] or nil
     close_window()
     if on_select and block then
       on_select(block, index)
@@ -296,7 +297,7 @@ function M.open(opts)
   end
 
   local function handle_search(char)
-    local index = current_index(blocks, summary_lines, win)
+    local index = current_index(state.blocks, state.summary_lines, win)
     close_window()
     if on_search then
       on_search(char, index)
@@ -309,6 +310,7 @@ function M.open(opts)
     buf = buf,
     win = win,
     close = close_window,
+    state = state,
   }
 end
 
@@ -316,6 +318,7 @@ function M.update(handle, opts)
   local options = opts or {}
   local buf = handle and handle.buf or nil
   local win = handle and handle.win or nil
+  local state = handle and handle.state or nil
   if not buf or not win then
     return
   end
@@ -326,8 +329,15 @@ function M.update(handle, opts)
   local blocks = options.blocks or {}
   local summary_lines = options.summary_lines or {}
   local title = options.title or "Android Hub"
+  if not state then
+    state = { blocks = blocks, summary_lines = summary_lines }
+    handle.state = state
+  else
+    state.blocks = blocks
+    state.summary_lines = summary_lines
+  end
 
-  local lines = build_lines(summary_lines, blocks)
+  local lines = build_lines(state.summary_lines, state.blocks)
   set_buffer_lines(buf, lines)
   resize_window(win, lines, title)
   clamp_cursor(win, lines)
