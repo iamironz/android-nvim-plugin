@@ -131,8 +131,98 @@ local function build_prompt_runs_deploy_flow()
   end)
 end
 
+local function build_prompt_variant_cancel_reopens_module_picker()
+  local picker_titles = {}
+
+  local stubs = {
+    ["android.actions.context"] = {
+      workspace = function()
+        return { root = "/workspace", modules = { ":app" } }
+      end,
+    },
+    ["android.actions.build_helpers"] = {
+      module_entries = function(modules)
+        return modules
+      end,
+      fetch_variants = function()
+        return { "debug" }
+      end,
+    },
+    ["android.command.runner"] = {
+      new = function()
+        return {}
+      end,
+    },
+    ["android.ui.picker"] = {
+      select_from_list = function(opts)
+        table.insert(picker_titles, opts.title)
+        if #picker_titles == 1 then
+          opts.on_select(":app")
+          return
+        end
+        if #picker_titles == 2 and opts.on_cancel then
+          opts.on_cancel()
+        end
+      end,
+    },
+  }
+
+  stubs_helper.with_stubs(stubs, function()
+    package.loaded["android.actions.build"] = nil
+    local build = require("android.actions.build")
+    build.build_prompt()
+
+    assert.eq(picker_titles[1], "Gradle modules", "module picker first")
+    assert.eq(picker_titles[2], "Build variants", "variant picker next")
+    assert.eq(picker_titles[3], "Gradle modules", "module picker reopened")
+  end)
+end
+
+local function build_prompt_module_cancel_calls_on_cancel()
+  local canceled = false
+
+  local stubs = {
+    ["android.actions.context"] = {
+      workspace = function()
+        return { root = "/workspace", modules = { ":app" } }
+      end,
+    },
+    ["android.actions.build_helpers"] = {
+      module_entries = function(modules)
+        return modules
+      end,
+    },
+    ["android.command.runner"] = {
+      new = function()
+        return {}
+      end,
+    },
+    ["android.ui.picker"] = {
+      select_from_list = function(opts)
+        if opts.on_cancel then
+          opts.on_cancel()
+        end
+      end,
+    },
+  }
+
+  stubs_helper.with_stubs(stubs, function()
+    package.loaded["android.actions.build"] = nil
+    local build = require("android.actions.build")
+    build.build_prompt({
+      on_cancel = function()
+        canceled = true
+      end,
+    })
+
+    assert.eq(canceled, true, "on_cancel called")
+  end)
+end
+
 function M.run()
   build_prompt_runs_deploy_flow()
+  build_prompt_variant_cancel_reopens_module_picker()
+  build_prompt_module_cancel_calls_on_cancel()
 end
 
 return M

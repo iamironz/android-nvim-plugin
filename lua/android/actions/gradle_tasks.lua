@@ -29,7 +29,7 @@ local function notify_result(result)
   vim.notify(message, vim.log.levels.ERROR)
 end
 
-local function build_picker(tasks, on_select)
+local function build_picker(tasks, on_select, on_cancel)
   local ok, pickers = pcall(require, "telescope.pickers")
   if not ok then
     return nil, "telescope not available"
@@ -54,7 +54,7 @@ local function build_picker(tasks, on_select)
       end,
     }),
     sorter = conf.generic_sorter({}),
-    attach_mappings = function(prompt_bufnr)
+    attach_mappings = function(prompt_bufnr, map)
       actions.select_default:replace(function()
         actions.close(prompt_bufnr)
         local selection = action_state.get_selected_entry()
@@ -62,6 +62,15 @@ local function build_picker(tasks, on_select)
           on_select(selection.value)
         end
       end)
+      if on_cancel then
+        local map_fn = map or function() end
+        local handle_cancel = function()
+          actions.close(prompt_bufnr)
+          on_cancel()
+        end
+        map_fn("i", "<esc>", handle_cancel)
+        map_fn("n", "<esc>", handle_cancel)
+      end
       return true
     end,
   })
@@ -97,7 +106,8 @@ function M.run_task(root, task, on_complete)
   end)
 end
 
-function M.open()
+function M.open(opts)
+  local options = opts or {}
   local workspace = context.workspace()
   if not workspace then
     return
@@ -112,7 +122,7 @@ function M.open()
 
   local picker, err = build_picker(tasks, function(task)
     M.run_task(workspace.root, task)
-  end)
+  end, options.on_cancel)
   if not picker then
     vim.notify(err or "telescope not available", vim.log.levels.WARN)
     return

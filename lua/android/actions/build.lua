@@ -16,30 +16,34 @@ local emulator = require("android.devices.emulator")
 local discovery = require("android.sdk.discovery")
 local wait = require("android.actions.wait")
 
-local function prompt_for_variant(root, runner, on_selected)
+local function prompt_for_variant(root, runner, on_selected, opts)
   local variants = build_helpers.fetch_variants(root, runner)
   if #variants == 0 then
     vim.notify("No Gradle variants found", vim.log.levels.WARN)
     return
   end
+  local options = opts or {}
   picker.select_from_list({
     title = "Build variants",
     items = variants,
     on_select = on_selected,
+    on_cancel = options.on_cancel,
   })
 end
 
-local function prompt_for_module(workspace, on_selected)
+local function prompt_for_module(workspace, on_selected, opts)
   local entries = build_helpers.module_entries(workspace.modules)
+  local options = opts or {}
   picker.select_from_list({
     title = "Gradle modules",
     items = entries,
     format = function(entry) return entry.label end,
     on_select = on_selected,
+    on_cancel = options.on_cancel,
   })
 end
 
-function M.select_module()
+function M.select_module(opts)
   local workspace = context.workspace()
   if not workspace then
     return
@@ -55,10 +59,10 @@ function M.select_module()
       label = "Root project"
     end
     vim.notify("Default module set to " .. label, vim.log.levels.INFO)
-  end)
+  end, opts)
 end
 
-function M.select_variant()
+function M.select_variant(opts)
   local workspace = context.workspace()
   if not workspace then
     return
@@ -71,24 +75,40 @@ function M.select_variant()
     local next_state = defaults.apply_build_defaults(state, build.module, variant)
     context.save_state(workspace.root, next_state)
     vim.notify("Default variant set to " .. variant, vim.log.levels.INFO)
-  end)
+  end, opts)
 end
 
 local build_and_deploy
 
-function M.build_prompt()
+function M.build_prompt(opts)
   local workspace = context.workspace()
   if not workspace then
     return
   end
 
   local runner = runner_module.new()
-  prompt_for_module(workspace, function(module)
+  local options = opts or {}
+  local open_module_picker
+  local function open_variant_picker(module)
     prompt_for_variant(workspace.root, runner, function(variant)
       local state = context.load_state(workspace.root)
       build_and_deploy(workspace, module, variant, runner, state)
-    end)
-  end)
+    end, {
+      on_cancel = function()
+        open_module_picker()
+      end,
+    })
+  end
+
+  open_module_picker = function()
+    prompt_for_module(workspace, function(module)
+      open_variant_picker(module)
+    end, {
+      on_cancel = options.on_cancel,
+    })
+  end
+
+  open_module_picker()
 end
 
 local function resolve_module(workspace, state)
@@ -353,7 +373,7 @@ function M.show_build_errors()
   vim.cmd("copen")
 end
 
-function M.list_apks()
+function M.list_apks(opts)
   local workspace = context.workspace()
   if not workspace then
     return
@@ -407,10 +427,11 @@ function M.list_apks()
       table.insert(items, { label = label, value = entry.path })
     end
   end
+  local options = opts or {}
   picker.select_from_list({
     title = title,
     items = items,
-    file_ignore_patterns = {},
+    file_ignore_patterns = options.file_ignore_patterns or {},
     format = function(entry)
       return string.format("%s (%s)", entry.label, entry.value)
     end,
@@ -418,6 +439,7 @@ function M.list_apks()
       vim.fn.setreg("+", path)
       vim.notify("APK path copied: " .. path, vim.log.levels.INFO)
     end,
+    on_cancel = options.on_cancel,
   })
 end
 

@@ -38,14 +38,34 @@ local function with_vim_notify_stubs(fn)
   end
 end
 
-local function fetches_gradle_tasks_builds_gradle_args_sets_root()
-  local received_root = nil
+local function reset_gradle_caches()
+  package.loaded["android.state.cache"] = nil
+  package.loaded["android.gradle.cache"] = nil
+  package.loaded["android.actions.gradle_tasks"] = nil
+end
 
+local function load_gradle_tasks()
+  reset_gradle_caches()
+  return require("android.actions.gradle_tasks")
+end
+
+local function apply_stub_overrides(stubs, overrides)
+  if not overrides then
+    return stubs
+  end
+
+  for key, value in pairs(overrides) do
+    stubs[key] = value
+  end
+
+  return stubs
+end
+
+local function gradle_fetch_task_stubs(overrides)
   local stubs = {
     ["android.state.selection_store"] = build_selection_store(),
     ["android.actions.build_helpers"] = {
-      run_gradle = function(root)
-        received_root = root
+      run_gradle = function()
         return { ok = true, stdout = "assemble - Desc" }
       end,
     },
@@ -56,11 +76,108 @@ local function fetches_gradle_tasks_builds_gradle_args_sets_root()
     },
   }
 
+  return apply_stub_overrides(stubs, overrides)
+end
+
+local function gradle_run_task_stubs(overrides)
+  local stubs = {
+    ["android.state.selection_store"] = build_selection_store(),
+    ["android.actions.build_helpers"] = {
+      build_command = function(_, args)
+        return { "./gradlew", args[1] }
+      end,
+    },
+    ["android.build.stream"] = {
+      start_build_job = function()
+        return { ok = true }
+      end,
+    },
+  }
+
+  return apply_stub_overrides(stubs, overrides)
+end
+
+local function gradle_open_stubs(overrides)
+  local stubs = {
+    ["android.state.selection_store"] = build_selection_store(),
+    ["android.actions.context"] = {
+      workspace = function()
+        return { root = "/root" }
+      end,
+    },
+    ["android.actions.build_helpers"] = {
+      run_gradle = function()
+        return { ok = true, stdout = "assemble - Desc" }
+      end,
+    },
+    ["android.gradle.tasks"] = {
+      parse = function()
+        return { { name = "assemble", description = "Desc" } }
+      end,
+    },
+    ["android.gradle.workspace"] = {
+      load_modules = function()
+        return {}
+      end,
+    },
+    ["android.command.runner"] = {
+      new = function()
+        return {}
+      end,
+    },
+    ["android.gradle.cache"] = {
+      persistent = function()
+        return {
+          modules = function(_, loader)
+            return loader()
+          end,
+          tasks = function(_, _, loader)
+            return loader()
+          end,
+        }
+      end,
+    },
+    ["telescope.pickers"] = {
+      new = function()
+        return { find = function() end }
+      end,
+    },
+    ["telescope.finders"] = { new_table = function() return {} end },
+    ["telescope.config"] = { values = { generic_sorter = function() return {} end } },
+    ["telescope.actions"] = {
+      close = function() end,
+      select_default = { replace = function() end },
+    },
+    ["telescope.actions.state"] = {
+      get_selected_entry = function()
+        return { value = "assemble" }
+      end,
+    },
+  }
+
+  return apply_stub_overrides(stubs, overrides)
+end
+
+local function with_gradle_tasks(stubs, fn)
   stubs_helper.with_stubs(stubs, function()
-    package.loaded["android.state.cache"] = nil
-    package.loaded["android.gradle.cache"] = nil
-    package.loaded["android.actions.gradle_tasks"] = nil
-    local gradle_tasks = require("android.actions.gradle_tasks")
+    local gradle_tasks = load_gradle_tasks()
+    fn(gradle_tasks)
+  end)
+end
+
+local function fetches_gradle_tasks_builds_gradle_args_sets_root()
+  local received_root = nil
+
+  local stubs = gradle_fetch_task_stubs({
+    ["android.actions.build_helpers"] = {
+      run_gradle = function(root)
+        received_root = root
+        return { ok = true, stdout = "assemble - Desc" }
+      end,
+    },
+  })
+
+  with_gradle_tasks(stubs, function(gradle_tasks)
     gradle_tasks.fetch_tasks("/root")
     assert.eq(received_root, "/root", "root")
   end)
@@ -69,26 +186,16 @@ end
 local function fetches_gradle_tasks_builds_gradle_args_sets_args()
   local received_args = nil
 
-  local stubs = {
-    ["android.state.selection_store"] = build_selection_store(),
+  local stubs = gradle_fetch_task_stubs({
     ["android.actions.build_helpers"] = {
       run_gradle = function(_, args)
         received_args = args
         return { ok = true, stdout = "assemble - Desc" }
       end,
     },
-    ["android.gradle.tasks"] = {
-      parse = function()
-        return { { name = "assemble", description = "Desc" } }
-      end,
-    },
-  }
+  })
 
-  stubs_helper.with_stubs(stubs, function()
-    package.loaded["android.state.cache"] = nil
-    package.loaded["android.gradle.cache"] = nil
-    package.loaded["android.actions.gradle_tasks"] = nil
-    local gradle_tasks = require("android.actions.gradle_tasks")
+  with_gradle_tasks(stubs, function(gradle_tasks)
     gradle_tasks.fetch_tasks("/root")
     assert.eq(received_args[1], "tasks", "arg 1")
     assert.eq(received_args[2], "--all", "arg 2")
@@ -98,51 +205,25 @@ end
 local function fetches_gradle_tasks_passes_lines_to_parser()
   local received_lines = nil
 
-  local stubs = {
-    ["android.state.selection_store"] = build_selection_store(),
-    ["android.actions.build_helpers"] = {
-      run_gradle = function()
-        return { ok = true, stdout = "assemble - Desc" }
-      end,
-    },
+  local stubs = gradle_fetch_task_stubs({
     ["android.gradle.tasks"] = {
       parse = function(lines)
         received_lines = lines
         return { { name = "assemble", description = "Desc" } }
       end,
     },
-  }
+  })
 
-  stubs_helper.with_stubs(stubs, function()
-    package.loaded["android.state.cache"] = nil
-    package.loaded["android.gradle.cache"] = nil
-    package.loaded["android.actions.gradle_tasks"] = nil
-    local gradle_tasks = require("android.actions.gradle_tasks")
+  with_gradle_tasks(stubs, function(gradle_tasks)
     gradle_tasks.fetch_tasks("/root")
     assert.eq(received_lines[1], "assemble - Desc", "parsed lines")
   end)
 end
 
 local function fetches_gradle_tasks_returns_parsed_tasks()
-  local stubs = {
-    ["android.state.selection_store"] = build_selection_store(),
-    ["android.actions.build_helpers"] = {
-      run_gradle = function()
-        return { ok = true, stdout = "assemble - Desc" }
-      end,
-    },
-    ["android.gradle.tasks"] = {
-      parse = function()
-        return { { name = "assemble", description = "Desc" } }
-      end,
-    },
-  }
+  local stubs = gradle_fetch_task_stubs()
 
-  stubs_helper.with_stubs(stubs, function()
-    package.loaded["android.state.cache"] = nil
-    package.loaded["android.gradle.cache"] = nil
-    package.loaded["android.actions.gradle_tasks"] = nil
-    local gradle_tasks = require("android.actions.gradle_tasks")
+  with_gradle_tasks(stubs, function(gradle_tasks)
     local result = gradle_tasks.fetch_tasks("/root")
     assert.eq(result[1].name, "assemble", "task name")
   end)
@@ -151,26 +232,16 @@ end
 local function run_task_builds_command_args_sets_root()
   local received_root = nil
 
-  local stubs = {
-    ["android.state.selection_store"] = build_selection_store(),
+  local stubs = gradle_run_task_stubs({
     ["android.actions.build_helpers"] = {
       build_command = function(root)
         received_root = root
         return { "./gradlew", "clean" }
       end,
     },
-    ["android.build.stream"] = {
-      start_build_job = function()
-        return { ok = true }
-      end,
-    },
-  }
+  })
 
-  stubs_helper.with_stubs(stubs, function()
-    package.loaded["android.state.cache"] = nil
-    package.loaded["android.gradle.cache"] = nil
-    package.loaded["android.actions.gradle_tasks"] = nil
-    local gradle_tasks = require("android.actions.gradle_tasks")
+  with_gradle_tasks(stubs, function(gradle_tasks)
     gradle_tasks.run_task("/root", "clean")
     assert.eq(received_root, "/root", "root")
   end)
@@ -179,26 +250,16 @@ end
 local function run_task_builds_command_args_sets_task_args()
   local received_task_args = nil
 
-  local stubs = {
-    ["android.state.selection_store"] = build_selection_store(),
+  local stubs = gradle_run_task_stubs({
     ["android.actions.build_helpers"] = {
       build_command = function(_, args)
         received_task_args = args
         return { "./gradlew", args[1] }
       end,
     },
-    ["android.build.stream"] = {
-      start_build_job = function()
-        return { ok = true }
-      end,
-    },
-  }
+  })
 
-  stubs_helper.with_stubs(stubs, function()
-    package.loaded["android.state.cache"] = nil
-    package.loaded["android.gradle.cache"] = nil
-    package.loaded["android.actions.gradle_tasks"] = nil
-    local gradle_tasks = require("android.actions.gradle_tasks")
+  with_gradle_tasks(stubs, function(gradle_tasks)
     gradle_tasks.run_task("/root", "clean")
     assert.eq(received_task_args[1], "clean", "task arg")
   end)
@@ -207,26 +268,16 @@ end
 local function run_task_passes_command_to_job_sets_command()
   local received_job_args = nil
 
-  local stubs = {
-    ["android.state.selection_store"] = build_selection_store(),
-    ["android.actions.build_helpers"] = {
-      build_command = function(_, args)
-        return { "./gradlew", args[1] }
-      end,
-    },
+  local stubs = gradle_run_task_stubs({
     ["android.build.stream"] = {
       start_build_job = function(_, args)
         received_job_args = args
         return { ok = true }
       end,
     },
-  }
+  })
 
-  stubs_helper.with_stubs(stubs, function()
-    package.loaded["android.state.cache"] = nil
-    package.loaded["android.gradle.cache"] = nil
-    package.loaded["android.actions.gradle_tasks"] = nil
-    local gradle_tasks = require("android.actions.gradle_tasks")
+  with_gradle_tasks(stubs, function(gradle_tasks)
     gradle_tasks.run_task("/root", "clean")
     assert.eq(received_job_args[1], "./gradlew", "gradle command")
   end)
@@ -235,26 +286,16 @@ end
 local function run_task_passes_command_to_job_sets_task_arg()
   local received_job_args = nil
 
-  local stubs = {
-    ["android.state.selection_store"] = build_selection_store(),
-    ["android.actions.build_helpers"] = {
-      build_command = function(_, args)
-        return { "./gradlew", args[1] }
-      end,
-    },
+  local stubs = gradle_run_task_stubs({
     ["android.build.stream"] = {
       start_build_job = function(_, args)
         received_job_args = args
         return { ok = true }
       end,
     },
-  }
+  })
 
-  stubs_helper.with_stubs(stubs, function()
-    package.loaded["android.state.cache"] = nil
-    package.loaded["android.gradle.cache"] = nil
-    package.loaded["android.actions.gradle_tasks"] = nil
-    local gradle_tasks = require("android.actions.gradle_tasks")
+  with_gradle_tasks(stubs, function(gradle_tasks)
     gradle_tasks.run_task("/root", "clean")
     assert.eq(received_job_args[2], "clean", "job task arg")
   end)
@@ -263,39 +304,23 @@ end
 local function run_task_invokes_job()
   local job_called = false
 
-  local stubs = {
-    ["android.state.selection_store"] = build_selection_store(),
-    ["android.actions.build_helpers"] = {
-      build_command = function(_, args)
-        return { "./gradlew", args[1] }
-      end,
-    },
+  local stubs = gradle_run_task_stubs({
     ["android.build.stream"] = {
       start_build_job = function()
         job_called = true
         return { ok = true }
       end,
     },
-  }
+  })
 
-  stubs_helper.with_stubs(stubs, function()
-    package.loaded["android.state.cache"] = nil
-    package.loaded["android.gradle.cache"] = nil
-    package.loaded["android.actions.gradle_tasks"] = nil
-    local gradle_tasks = require("android.actions.gradle_tasks")
+  with_gradle_tasks(stubs, function(gradle_tasks)
     gradle_tasks.run_task("/root", "clean")
     assert.is_true(job_called, "job called")
   end)
 end
 
 local function run_task_notifies_on_success()
-  local stubs = {
-    ["android.state.selection_store"] = build_selection_store(),
-    ["android.actions.build_helpers"] = {
-      build_command = function(_, args)
-        return { "./gradlew", args[1] }
-      end,
-    },
+  local stubs = gradle_run_task_stubs({
     ["android.build.stream"] = {
       start_build_job = function(_, _, on_complete)
         if on_complete then
@@ -304,18 +329,56 @@ local function run_task_notifies_on_success()
         return { ok = true }
       end,
     },
-  }
+  })
 
   with_vim_notify_stubs(function(state)
-    stubs_helper.with_stubs(stubs, function()
-      package.loaded["android.state.cache"] = nil
-      package.loaded["android.gradle.cache"] = nil
-      package.loaded["android.actions.gradle_tasks"] = nil
-      local gradle_tasks = require("android.actions.gradle_tasks")
+    with_gradle_tasks(stubs, function(gradle_tasks)
       gradle_tasks.run_task("/root", "clean")
       assert.eq(state.message, "Gradle task completed", "notify message")
     end)
   end)
+end
+
+local function open_forwards_on_cancel_and_escape_calls_it()
+  local canceled = 0
+  local closed = 0
+  local mapped = { i = false, n = false }
+  local captured = { opts = nil }
+
+  local stubs = gradle_open_stubs({
+    ["telescope.pickers"] = {
+      new = function(_, opts)
+        captured.opts = opts
+        return { find = function() end }
+      end,
+    },
+    ["telescope.actions"] = {
+      close = function()
+        closed = closed + 1
+      end,
+      select_default = { replace = function() end },
+    },
+  })
+
+  with_gradle_tasks(stubs, function(gradle_tasks)
+    gradle_tasks.open({
+      on_cancel = function()
+        canceled = canceled + 1
+      end,
+    })
+  end)
+
+  captured.opts.attach_mappings(1, function(mode, lhs, rhs)
+    if lhs == "<esc>" then
+      mapped[mode] = true
+      rhs()
+    end
+  end)
+
+  assert.eq(mapped.i, true, "mapped insert")
+  assert.eq(mapped.n, true, "mapped normal")
+  assert.eq(canceled, 2, "on_cancel called")
+  assert.eq(closed, 2, "picker closed")
 end
 
 function M.run()
@@ -329,6 +392,7 @@ function M.run()
   run_task_passes_command_to_job_sets_task_arg()
   run_task_invokes_job()
   run_task_notifies_on_success()
+  open_forwards_on_cancel_and_escape_calls_it()
 end
 
 return M

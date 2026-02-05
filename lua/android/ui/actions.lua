@@ -89,7 +89,10 @@ function M.open(opts)
   local items, max_section = build_items(blocks)
   local title = options.title or "Android Actions"
   local default_query = options.default_query or options.initial_query
-  local on_cancel = options.on_cancel
+  local picker_on_cancel = options.on_cancel
+  local reopen_actions_picker = function()
+    M.open(options)
+  end
   if options.include_summary then
     title = build_summary_title(title, summary.lines())
   end
@@ -102,10 +105,10 @@ function M.open(opts)
     end,
     on_select = function(action_id)
       if action_id then
-        actions.run(action_id)
+        actions.run(action_id, { on_cancel = reopen_actions_picker })
       end
     end,
-    on_cancel = on_cancel,
+    on_cancel = picker_on_cancel,
   })
 end
 

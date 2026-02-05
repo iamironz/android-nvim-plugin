@@ -12,5 +12,8 @@
 .vscode/
 .idea/
 
+# Worktrees
+.worktrees/
+
 # Logs
 *.log

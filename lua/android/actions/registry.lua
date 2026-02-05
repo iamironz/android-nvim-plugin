@@ -54,7 +54,7 @@ local actions = {
   run_stop = run_executor.stop_active,
 }
 
-function M.run(action_id)
+function M.run(action_id, opts)
   if type(action_id) == "string" then
     local config_id = action_id:match("^run_select:(.+)$")
     if config_id then
@@ -70,7 +70,7 @@ function M.run(action_id)
     vim.notify("Unknown Android action: " .. tostring(action_id), vim.log.levels.WARN)
     return
   end
-  action()
+  action(opts)
 end
 
 return M

@@ -15,8 +15,16 @@ local function build_items(configs)
   return items
 end
 
-function M.select(workspace)
-  local target_workspace = workspace or context.workspace()
+function M.select(workspace_or_opts)
+  local opts = nil
+  local target_workspace = nil
+  if type(workspace_or_opts) == "table"
+      and (workspace_or_opts.on_cancel ~= nil or workspace_or_opts.workspace ~= nil) then
+    opts = workspace_or_opts
+    target_workspace = opts.workspace or context.workspace()
+  else
+    target_workspace = workspace_or_opts or context.workspace()
+  end
   if not target_workspace then
     return nil
   end
@@ -29,6 +37,7 @@ function M.select(workspace)
     on_select = function(config_id)
       selected = run_registry.select(target_workspace, config_id)
     end,
+    on_cancel = opts and opts.on_cancel or nil,
   })
 
   return selected

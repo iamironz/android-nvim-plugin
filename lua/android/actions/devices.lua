@@ -51,12 +51,13 @@ local function list_devices(runner, adb_path)
   return devices
 end
 
-function M.select_device()
+function M.select_device(opts)
   local workspace, tools = resolve_workspace_tools({ "adb" })
   if not workspace then
     return
   end
 
+  local options = opts or {}
   local runner = runner_module.new()
   local devices = list_devices(runner, tools.adb)
   local entries = device_entries(devices)
@@ -74,14 +75,23 @@ function M.select_device()
       context.save_state(workspace.root, next_state)
       vim.notify("Default device set to " .. serial, vim.log.levels.INFO)
     end,
+    on_cancel = options.on_cancel,
   })
 end
 
-function M.select_avd(on_selected)
+function M.select_avd(on_selected, opts)
   local workspace, tools = resolve_workspace_tools({ "emulator" })
   if not workspace then
     return
   end
+
+  local selected = on_selected
+  local options = opts
+  if type(on_selected) == "table" and opts == nil then
+    options = on_selected
+    selected = nil
+  end
+  options = options or {}
 
   local runner = runner_module.new()
   local avds = emulator.list(runner, tools.emulator)
@@ -97,12 +107,13 @@ function M.select_avd(on_selected)
       local state = context.load_state(workspace.root)
       local next_state = defaults.apply_avd_defaults(state, name)
       context.save_state(workspace.root, next_state)
-      if on_selected then
-        on_selected(name)
+      if selected then
+        selected(name)
       else
         vim.notify("Default AVD set to " .. name, vim.log.levels.INFO)
       end
     end,
+    on_cancel = options.on_cancel,
   })
 end
 
@@ -137,12 +148,13 @@ function M.start_emulator()
   M.select_avd(launch)
 end
 
-function M.create_avd()
+function M.create_avd(opts)
   local workspace, tools = resolve_workspace_tools({ "avdmanager" })
   if not workspace then
     return
   end
 
+  local options = opts or {}
   local runner = runner_module.new()
   local devices = avd.list_devices(runner, tools.avdmanager)
   if #devices == 0 then
@@ -159,62 +171,77 @@ function M.create_avd()
     table.insert(entries, { label = label, value = entry.id })
   end
 
-  picker.select_from_list({
-    title = "AVD device profiles",
-    items = entries,
-    format = function(entry) return entry.label end,
-    on_select = function(device_id)
-      local name = vim.fn.input("AVD name: ")
-      if name == "" then
-        vim.notify("AVD name required", vim.log.levels.WARN)
-        return
-      end
-       local system_images = sdk_packages.list_system_images(
-         discovery.new({ root = workspace.root }).packages()
-       )
-      if #system_images == 0 then
-        vim.notify("No system images installed", vim.log.levels.WARN)
-        return
-      end
+  local reopen_device_profiles
 
-      picker.select_from_list({
-        title = "System images",
-        items = system_images,
-        on_select = function(system_image)
-          local result = avd.build_create_command(
-            tools.avdmanager,
-            name,
-            system_image,
-            device_id,
-            { force = true }
-          )
-          if not result.ok then
-            vim.notify(result.error or "Failed to create AVD", vim.log.levels.ERROR)
-            return
-          end
+  local function open_system_images(device_id)
+    local name = vim.fn.input("AVD name: ")
+    if name == "" then
+      vim.notify("AVD name required", vim.log.levels.WARN)
+      return
+    end
+    local system_images = sdk_packages.list_system_images(
+      discovery.new({ root = workspace.root }).packages()
+    )
+    if #system_images == 0 then
+      vim.notify("No system images installed", vim.log.levels.WARN)
+      return
+    end
 
-          local created = runner.run(result.cmd)
-          if not created.ok then
-            vim.notify("AVD create failed", vim.log.levels.ERROR)
-            return
-          end
+    picker.select_from_list({
+      title = "System images",
+      items = system_images,
+      on_select = function(system_image)
+        local result = avd.build_create_command(
+          tools.avdmanager,
+          name,
+          system_image,
+          device_id,
+          { force = true }
+        )
+        if not result.ok then
+          vim.notify(result.error or "Failed to create AVD", vim.log.levels.ERROR)
+          return
+        end
 
-          local state = context.load_state(workspace.root)
-          local next_state = defaults.apply_avd_defaults(state, name)
-          context.save_state(workspace.root, next_state)
-          vim.notify("AVD created: " .. name, vim.log.levels.INFO)
-        end,
-      })
-    end,
-  })
+        local created = runner.run(result.cmd)
+        if not created.ok then
+          vim.notify("AVD create failed", vim.log.levels.ERROR)
+          return
+        end
+
+        local state = context.load_state(workspace.root)
+        local next_state = defaults.apply_avd_defaults(state, name)
+        context.save_state(workspace.root, next_state)
+        vim.notify("AVD created: " .. name, vim.log.levels.INFO)
+      end,
+      on_cancel = function()
+        if reopen_device_profiles then
+          reopen_device_profiles()
+        end
+      end,
+    })
+  end
+
+  reopen_device_profiles = function()
+    picker.select_from_list({
+      title = "AVD device profiles",
+      items = entries,
+      format = function(entry) return entry.label end,
+      on_select = open_system_images,
+      on_cancel = options.on_cancel,
+    })
+  end
+
+  reopen_device_profiles()
 end
 
-function M.stop_emulator()
+function M.stop_emulator(opts)
   local workspace, tools = resolve_workspace_tools({ "adb" })
   if not workspace then
     return
   end
 
+  local options = opts or {}
   local runner = runner_module.new()
   local devices = list_devices(runner, tools.adb)
   local entries = {}
@@ -245,6 +272,7 @@ function M.stop_emulator()
         vim.notify("Failed to stop emulator", vim.log.levels.ERROR)
       end
     end,
+    on_cancel = options.on_cancel,
   })
 end
 
