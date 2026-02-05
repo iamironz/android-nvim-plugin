@@ -300,6 +300,7 @@ See [docs/commands.md](docs/commands.md) for details.
 | Gradle tasks browser + run | Yes | Yes | - |
 | Gradle clean | Yes | Yes | - |
 | Emulator + AVD management | Yes | Yes | - |
+| Advanced emulator controls (snapshots, GPS) | Yes | Yes | - |
 | Device select + app management | Yes | Yes | - |
 | ADB device discovery (serial/state/model) | Yes | Yes | - |
 | Run configs (Android/JVM/Gradle) | Yes | Yes | - |
@@ -314,17 +315,16 @@ See [docs/commands.md](docs/commands.md) for details.
 | Debugger (DAP attach, breakpoints) | Yes | No | Planned |
 | Test runner (unit/instrumented) | Yes | No | Planned |
 | Test results + coverage | Yes | No | Planned |
-| Gradle sync + project model import | Yes | No | Planned |
+| Gradle sync + project model import | Yes | Partial | Planned |
 | Build analyzer + task graph | Yes | No | Planned |
 | Android Lint integration | Yes | No | Planned |
 | Dependency search + insert (Maven) | Yes | No | Planned |
 | Resource + manifest helpers | Yes | No | Planned |
 | Manifest merge viewer | Yes | No | Planned |
 | APK analyzer | Yes | No | Planned |
-| SDK manager UI | Yes | No | Planned |
+| SDK manager | Yes | No | Planned |
 | Device file explorer + push/pull | Yes | No | Planned |
 | ADB shell utilities (screenshot/record) | Yes | No | Planned |
-| Advanced emulator controls (snapshots, GPS) | Yes | No | Planned |
 | Layout/Compose preview | Yes | No | Planned |
 | App inspectors (DB/network/layout) | Yes | No | Planned |
 | ProGuard/R8 mapping tools | Yes | No | Planned |
