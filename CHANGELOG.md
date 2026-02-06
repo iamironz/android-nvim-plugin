@@ -6,10 +6,11 @@ The format is based on Keep a Changelog and this project adheres to SemVer.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-02-06
+
 ### Added
 
 - Docked two-layer output panels for logcat and build streams.
-- Fixed control strips for panel filters and inline header edits in dock mode.
 - Docs writing standard for page structure, markdown conventions, and explanation style.
 
 ### Changed
@@ -17,11 +18,14 @@ The format is based on Keep a Changelog and this project adheres to SemVer.
 - Android hub section selection and fallback search flow for clearer navigation.
 - Build and logcat panel hotkeys now work from both control strip and output body.
 - Documentation reorganized into guides, reference, support, and maintainer sections.
-- README trimmed to quick-start/navigation index; feature parity moved to docs roadmap.
+- README quick start and feature highlights refreshed for clearer onboarding.
+- Installation docs now prioritize lazy.nvim setup and `:Lazy sync` flow.
 - Canonical docs rewritten with consistent `Purpose`, workflow, and `Related Docs` sections.
+- Workflow screenshot refreshed.
 
 ### Fixed
 
+- Fixed control strips for panel filters and inline header edits in dock mode.
 - Header versus body `<CR>` handling so stack-trace jumps stay available in logcat output.
 - Menu discoverability and section-entry cues in AndroidMenu.
 
