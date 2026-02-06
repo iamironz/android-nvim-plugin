@@ -80,10 +80,10 @@ Full first-run walkthrough: [docs/getting-started.md](docs/getting-started.md)
 - **Default variant detection.** Reads `isDefault` markers from `buildTypes` and
   `productFlavors` in build.gradle to auto-select the right variant.
 - **APK discovery.** Resolves by variant, scans flavor subdirectories, supports
-  path overrides and full-scan fallback (`build.scan_all_apk_outputs`).
+  path overrides and full-scan fallback.
 - **Gradle task browser.** Browse and run any task via `:Telescope android tasks`.
-- **Build output dock.** Bottom panel with header strip, real-time streaming,
-  text filter with history, auto-scroll, read-only buffer.
+- **Build output dock.** Bottom panel with real-time streaming, text filter
+  with history, and quickfix-ready error highlighting.
 - **Quickfix integration.** Kotlin and Java errors parsed into quickfix list on
   build failure.
   See [docs/guides/build-and-deploy.md](docs/guides/build-and-deploy.md).
@@ -96,20 +96,16 @@ Full first-run walkthrough: [docs/getting-started.md](docs/getting-started.md)
 
 ### Logcat
 
-- **Dock panel.** Fixed control header (package/filter/level) and scrolling body.
-  Closing either window closes both.
+- **Dock panel.** Fixed control header (package/filter/level) and scrolling
+  output with syntax highlighting by log level.
 - **Package filtering.** Auto-detects from APK, manifest, or build.gradle.
-  PID-based when the process is running.
-- **Text and regex filtering.** Space-separated terms (AND logic), `/pattern/`
-  for regex. Filter history with Telescope completion.
-- **Log level filtering.** V, D, I, W, E applied as logcat arguments.
-- **Pause/resume.** Buffers output while paused, flushes on resume.
-- **Restart, clear, reset.** Single-key controls for each.
+- **Text and regex filtering.** Space-separated terms, `/pattern/` for regex.
+  Filter history with Telescope completion.
+- **Log level filtering.** V, D, I, W, E.
+- **Pause/resume, restart, clear, reset.** Single-key controls.
 - **Stack trace navigation.** `<CR>` on `(File.kt:42)` jumps to source.
-- **Auto-reconnect.** Exponential backoff, up to 5 retries.
-- **Syntax highlighting.** Color-coded by log level.
+- **Auto-reconnect.** Keeps logcat alive across device disconnects.
 - **Multi-session.** Independent state per run config.
-- **Interactive header.** `<CR>` on header lines opens the relevant picker.
   See [docs/guides/logcat.md](docs/guides/logcat.md).
 
 ### Device Manager and ADB
@@ -134,25 +130,23 @@ Full first-run walkthrough: [docs/getting-started.md](docs/getting-started.md)
 
 ### Workspace and SDK
 
-- **Project detection.** Gradle root, Android modules, KMP targets, iOS
-  workspaces. Cached with settings-file invalidation.
-- **SDK discovery.** Plugin config -> `local.properties` -> env vars
-  (`ANDROID_SDK_ROOT`, `ANDROID_HOME`) -> OS defaults. Tools resolved from root.
-- **Gradle caching.** Tasks, variants, modules cached with mtime invalidation.
-  Background prefetch on menu open.
-- **Persistent selections.** Module, variant, device, AVD, run config, logcat
+- **Project detection.** Auto-detects Gradle root, Android modules, KMP targets,
+  and iOS workspaces.
+- **SDK discovery.** Finds Android SDK from config, `local.properties`, env vars,
+  or OS defaults. Resolves adb, aapt2, emulator, and other tools automatically.
+- **Gradle caching.** Tasks, variants, and modules cached and prefetched in the
+  background so menu actions stay fast.
+- **Persistent selections.** Module, variant, device, AVD, run config, and logcat
   state saved per workspace across sessions.
-- **Health checks.** `:checkhealth android` validates SDK, tools, Gradle, iOS.
+- **Health checks.** `:checkhealth android` validates SDK, tools, Gradle, and iOS.
   See [docs/reference/configuration.md](docs/reference/configuration.md) and
   [docs/support/troubleshooting.md](docs/support/troubleshooting.md).
 
 ### Editor Integration
 
-- **Auto-save.** Saves on `InsertLeave`/`FocusLost` with debounce.
-  Configurable via `ui.autosave`.
-- **File watcher.** Detects external changes, prompts Reload / Keep / Diff /
-  Force Save. Configurable via `ui.file_watcher`.
-- **Read-only output buffers.** Logcat and build panels are non-editable.
+- **Auto-save.** Saves modified buffers before you switch context.
+- **File watcher.** Detects external changes and prompts to reload or diff.
+- **Read-only output.** Logcat and build panels are non-editable.
 - **Transparent roadmap.** Tracked in [docs/roadmap.md](docs/roadmap.md).
 
 ## Documentation
