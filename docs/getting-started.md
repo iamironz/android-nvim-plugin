@@ -15,16 +15,7 @@ Get to a successful first run quickly, then branch into the right workflow guide
 
 ## Setup
 
-1. Install the plugin. See [install.md](install.md).
-1. Add setup in your Neovim config:
-
-```lua
-require("android").setup()
-```
-
-1. Restart Neovim.
-
-Minimal lazy.nvim example:
+1. Add this `lazy.nvim` plugin spec:
 
 ```lua
 {
@@ -35,6 +26,11 @@ Minimal lazy.nvim example:
   end,
 }
 ```
+
+1. Run `:Lazy sync`.
+1. Restart Neovim.
+
+If you use another plugin manager, see [install.md](install.md).
 
 ## First Successful Run
 

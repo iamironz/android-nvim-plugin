@@ -33,15 +33,23 @@ bag of problems with a better keyboard.
 
 ## Quick Start
 
-1. Install the plugin. See [docs/install.md](docs/install.md).
-1. Configure setup in your Neovim config:
+1. Add this `lazy.nvim` plugin spec:
 
 ```lua
-require("android").setup()
+{
+  "iamironz/android-nvim-plugin",
+  lazy = false,
+  config = function()
+    require("android").setup()
+  end,
+}
 ```
 
+1. Run `:Lazy sync`.
 1. Open a project and run `:AndroidMenu`.
 1. Use `[1]`, `[2]`, and `<CR>` to enter sections. Use `/` to search.
+
+If you use another plugin manager, see [docs/install.md](docs/install.md).
 
 Full first-run walkthrough: [docs/getting-started.md](docs/getting-started.md)
 
