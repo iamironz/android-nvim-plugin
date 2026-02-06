@@ -69,7 +69,9 @@ local function restart_logcat(session, opts)
   if session.stopped then
     return
   end
-  reset_reconnect(session)
+  if not (opts and opts.from_reconnect) then
+    reset_reconnect(session)
+  end
   if not session.adb_path or session.adb_path == "" then
     vim.notify("adb not available for logcat", vim.log.levels.WARN)
     return
@@ -98,7 +100,7 @@ local function schedule_reconnect(session)
     if session.stopped then
       return
     end
-    restart_logcat(session, { preserve_body = true })
+    restart_logcat(session, { preserve_body = true, from_reconnect = true })
   end)
   if not ok then
     show_status(session, "Status: Logcat retry limit reached")

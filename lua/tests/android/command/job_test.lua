@@ -162,6 +162,45 @@ local function test_callbacks_are_triggered()
   if not ok then error(err) end
 end
 
+local function test_callbacks_merge_partial_chunks()
+  local state, restore = mock_vim_job()
+  package.loaded["android.command.job"] = nil
+  local job = require("android.command.job")
+
+  local ok, err = pcall(function()
+    local stdout_data = {}
+    local stderr_data = {}
+
+    local j = job.spawn("echo hello", {
+      on_stdout = function(lines)
+        table.insert(stdout_data, lines)
+      end,
+      on_stderr = function(lines)
+        table.insert(stderr_data, lines)
+      end,
+    })
+
+    local opts = state.jobs[j.id].opts
+
+    opts.on_stdout(j.id, { "part" }, "stdout")
+    assert.eq(#stdout_data, 0, "stdout partial buffered")
+
+    opts.on_stdout(j.id, { "ial", "" }, "stdout")
+    assert.eq(#stdout_data, 1, "stdout merged callback")
+    assert.table_eq(stdout_data[1], { "partial" }, "stdout merged line")
+
+    opts.on_stderr(j.id, { "err" }, "stderr")
+    assert.eq(#stderr_data, 0, "stderr partial buffered")
+
+    opts.on_stderr(j.id, { "or", "" }, "stderr")
+    assert.eq(#stderr_data, 1, "stderr merged callback")
+    assert.table_eq(stderr_data[1], { "error" }, "stderr merged line")
+  end)
+
+  restore()
+  if not ok then error(err) end
+end
+
 local function test_stop_calls_jobstop()
   local state, restore = mock_vim_job()
   package.loaded["android.command.job"] = nil
@@ -184,6 +223,7 @@ function M.run()
   test_spawn_returns_failure_for_jobstart_zero()
   test_spawn_returns_failure_for_jobstart_negative()
   test_callbacks_are_triggered()
+  test_callbacks_merge_partial_chunks()
   test_stop_calls_jobstop()
 end
 

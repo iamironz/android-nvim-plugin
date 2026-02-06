@@ -1,27 +1,55 @@
 local M = {}
 
-local function clean_lines(data)
-  if not data or #data == 0 then return data end
-
-  -- Check if last line is empty
-  if data[#data] == "" then
-    local lines = {}
-    for i = 1, #data - 1 do
-      lines[i] = data[i]
-    end
-    return lines
+local function normalize_chunk(data, pending)
+  local remainder = pending or ""
+  if not data or #data == 0 then
+    return nil, remainder
   end
-  
-  return data
+
+  local has_trailing_newline = data[#data] == ""
+  local chunks = {}
+  local last_index = #data
+  if has_trailing_newline then
+    last_index = last_index - 1
+  end
+
+  for i = 1, last_index do
+    chunks[#chunks + 1] = data[i]
+  end
+
+  local lines = {}
+  if #chunks > 0 then
+    chunks[1] = remainder .. chunks[1]
+    remainder = ""
+    if has_trailing_newline then
+      lines = chunks
+    else
+      for i = 1, #chunks - 1 do
+        lines[#lines + 1] = chunks[i]
+      end
+      remainder = chunks[#chunks]
+    end
+  elseif has_trailing_newline and remainder ~= "" then
+    lines[1] = remainder
+    remainder = ""
+  end
+
+  if #lines == 0 then
+    return nil, remainder
+  end
+  return lines, remainder
 end
 
 function M.spawn(cmd, opts)
   opts = opts or {}
+  local stdout_pending = ""
+  local stderr_pending = ""
 
   local job_opts = {
     on_stdout = function(_, data, _)
       if opts.on_stdout then
-        local lines = clean_lines(data)
+        local lines
+        lines, stdout_pending = normalize_chunk(data, stdout_pending)
         if lines and #lines > 0 then
           opts.on_stdout(lines)
         end
@@ -29,13 +57,22 @@ function M.spawn(cmd, opts)
     end,
     on_stderr = function(_, data, _)
       if opts.on_stderr then
-        local lines = clean_lines(data)
+        local lines
+        lines, stderr_pending = normalize_chunk(data, stderr_pending)
         if lines and #lines > 0 then
           opts.on_stderr(lines)
         end
       end
     end,
     on_exit = function(_, code, _)
+      if opts.on_stdout and stdout_pending ~= "" then
+        opts.on_stdout({ stdout_pending })
+        stdout_pending = ""
+      end
+      if opts.on_stderr and stderr_pending ~= "" then
+        opts.on_stderr({ stderr_pending })
+        stderr_pending = ""
+      end
       if opts.on_exit then
         opts.on_exit(code)
       end

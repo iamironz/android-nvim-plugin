@@ -181,7 +181,7 @@ local function handle_output(session, lines, deps)
       panel().clear_body()
     end
   end
-  if #filtered > 0 then
+  if lines and #lines > 0 then
     deps.reset_reconnect(session)
   end
   if session.paused then
