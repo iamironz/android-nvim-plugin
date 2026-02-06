@@ -309,7 +309,13 @@ function M.build(ios, runner, opts)
     return nil
   end
   local args = build_args(ios, scheme, nil, options.configuration)
-  return stream.start_build_job(ios.root, args, options.on_complete)
+  return stream.start_build_job(ios.root, args, options.on_complete, {
+    panel = {
+      module = "ios",
+      variant = options.configuration or "Debug",
+      task = scheme and ("scheme:" .. scheme) or "xcodebuild",
+    },
+  })
 end
 
 function M.deploy(ios, runner, opts)
@@ -364,7 +370,13 @@ function M.deploy(ios, runner, opts)
       end
     end
     vim.notify("iOS deploy completed", vim.log.levels.INFO)
-  end)
+  end, {
+    panel = {
+      module = "ios",
+      variant = options.configuration or "Debug",
+      task = scheme and ("scheme:" .. scheme) or "xcodebuild",
+    },
+  })
 end
 
 return M

@@ -12,6 +12,52 @@ local strings = require("android.utils.strings")
 local DEFAULT_MAX_LINES = 2000
 local DEFAULT_CONTROL_HEIGHT = 1
 
+local function lowercase_first(value)
+  if not value or value == "" then
+    return value
+  end
+  return value:sub(1, 1):lower() .. value:sub(2)
+end
+
+local function parse_task_context(task)
+  if type(task) ~= "string" or task == "" then
+    return { task = nil, module = nil, variant = nil }
+  end
+
+  local module, name = task:match("^(:.+):([^:]+)$")
+  local task_name = name or task
+  local variant_suffix = task_name:match("^assemble(.+)$")
+    or task_name:match("^bundle(.+)$")
+
+  return {
+    task = task_name,
+    module = module,
+    variant = lowercase_first(variant_suffix),
+  }
+end
+
+local function resolve_task_argument(args)
+  for i = 2, #(args or {}) do
+    local value = args[i]
+    if type(value) == "string" and value ~= "" and value:sub(1, 1) ~= "-" then
+      return value
+    end
+  end
+  return nil
+end
+
+local function resolve_panel_context(args, opts)
+  local options = opts or {}
+  local task = options.task or resolve_task_argument(args)
+  local parsed = parse_task_context(task)
+
+  return {
+    task = options.task or parsed.task,
+    module = options.module or parsed.module,
+    variant = options.variant or parsed.variant,
+  }
+end
+
 local function trim_lines(lines, max_lines)
   local overflow = #lines - max_lines
   if overflow <= 0 then
@@ -32,6 +78,14 @@ local function normalize_input(value)
 end
 
 local function render_header(session)
+  if panel.set_names then
+    panel.set_names(panel_header.build_panel_names({
+      module = session.module,
+      variant = session.variant,
+      task = session.task,
+      filter = session.filter,
+    }))
+  end
   panel.set_header_lines(panel_header.build_lines({ filter = session.filter }))
 end
 
@@ -131,7 +185,8 @@ local function setup_keymaps(session)
   end)
 end
 
-local function create_session(root)
+local function create_session(root, args, opts)
+  local metadata = resolve_panel_context(args, opts)
   local handle = panel.open({
     layout = "dock",
     control_height = DEFAULT_CONTROL_HEIGHT,
@@ -146,6 +201,9 @@ local function create_session(root)
     control_buf = handle and handle.control_buf or nil,
     control_win = handle and handle.control_win or nil,
     root = root,
+    module = metadata.module,
+    variant = metadata.variant,
+    task = metadata.task,
     filter = "",
     header_count = 1,
     max_lines = DEFAULT_MAX_LINES,
@@ -192,8 +250,9 @@ function M.build_shell_command(_, args)
   return command
 end
 
-function M.start_build_job(root, args, on_complete)
-  local session = create_session(root)
+function M.start_build_job(root, args, on_complete, opts)
+  local options = opts or {}
+  local session = create_session(root, args, options.panel)
   local cmd = M.build_shell_command(root, args)
   local build_job = jobs.start(cmd, {
     cwd = root,

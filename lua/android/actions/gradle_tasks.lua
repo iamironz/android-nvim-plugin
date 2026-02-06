@@ -103,7 +103,11 @@ function M.run_task(root, task, on_complete)
     if on_complete then
       on_complete(result)
     end
-  end)
+  end, {
+    panel = {
+      task = task,
+    },
+  })
 end
 
 function M.open(opts)

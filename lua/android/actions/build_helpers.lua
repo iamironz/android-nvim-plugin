@@ -254,7 +254,13 @@ function M.run_build(root, module, variant, on_complete)
     if on_complete then
       on_complete(result)
     end
-  end)
+  end, {
+    panel = {
+      module = module_value or "root",
+      variant = variant,
+      task = assemble_cmd[#assemble_cmd],
+    },
+  })
 end
 
 return M

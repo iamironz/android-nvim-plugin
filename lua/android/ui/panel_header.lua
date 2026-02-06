@@ -7,6 +7,39 @@ local function normalize_value(value)
   return tostring(value)
 end
 
+local function trim(value)
+  return (value:gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
+local function normalize_name_value(value)
+  local text = normalize_value(value)
+  text = trim(text:gsub("%s+", " "))
+  if text == "" then
+    return "-"
+  end
+  if #text > 40 then
+    return text:sub(1, 37) .. "..."
+  end
+  return text
+end
+
+local function append_name_part(parts, key, value)
+  parts[#parts + 1] = string.format("%s=%s", key, normalize_name_value(value))
+end
+
+local function panel_names(prefix, control_prefix, fields)
+  local body = { prefix }
+  local control = { control_prefix }
+  for _, field in ipairs(fields or {}) do
+    append_name_part(body, field.key, field.value)
+    append_name_part(control, field.key, field.value)
+  end
+  return {
+    body = table.concat(body, " "),
+    control = table.concat(control, " "),
+  }
+end
+
 function M.logcat_lines(opts)
   local options = opts or {}
   return {
@@ -21,6 +54,27 @@ function M.build_lines(opts)
   return {
     string.format("Filter: %s", normalize_value(options.filter)),
   }
+end
+
+function M.logcat_panel_names(opts)
+  local options = opts or {}
+  return panel_names("android://logcat", "android://logcat-controls", {
+    { key = "module", value = options.module },
+    { key = "variant", value = options.variant },
+    { key = "app", value = options.package },
+    { key = "filter", value = options.filter },
+    { key = "level", value = options.level },
+  })
+end
+
+function M.build_panel_names(opts)
+  local options = opts or {}
+  return panel_names("android://build", "android://build-controls", {
+    { key = "module", value = options.module },
+    { key = "variant", value = options.variant },
+    { key = "task", value = options.task },
+    { key = "filter", value = options.filter },
+  })
 end
 
 return M

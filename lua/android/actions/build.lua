@@ -502,7 +502,12 @@ function M.clean()
       return
     end
     vim.notify("Gradle clean failed", vim.log.levels.ERROR)
-  end)
+  end, {
+    panel = {
+      module = "root",
+      task = "clean",
+    },
+  })
 end
 
 return M

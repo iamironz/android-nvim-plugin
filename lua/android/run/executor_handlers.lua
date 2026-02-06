@@ -43,7 +43,11 @@ local function run_jvm(workspace, config)
     return nil
   end
   local args = build_helpers.build_command(workspace.root, { task })
-  return stream.start_build_job(workspace.root, args)
+  return stream.start_build_job(workspace.root, args, nil, {
+    panel = {
+      task = task,
+    },
+  })
 end
 
 local function run_gradle_task()
@@ -59,7 +63,11 @@ local function run_shell(workspace, config)
   if #args == 0 then
     return nil
   end
-  return stream.start_build_job(workspace.root, args)
+  return stream.start_build_job(workspace.root, args, nil, {
+    panel = {
+      task = args[1],
+    },
+  })
 end
 
 function M.run(workspace, config, state)

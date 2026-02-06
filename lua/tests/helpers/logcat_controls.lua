@@ -234,6 +234,7 @@ function M.new_context(options)
   local ctx = {
     state = opts.state or M.build_state(),
     header_lines = opts.header_lines or { value = nil },
+    panel_names = opts.panel_names,
     spawn_calls = opts.spawn_calls or { count = 0 },
     clear_body_calls = opts.clear_body_calls or { count = 0 },
   }
@@ -249,6 +250,7 @@ function M.with_logcat_context(options, fn)
       vim_state,
       ctx.state,
       ctx.header_lines,
+      ctx.panel_names,
       ctx.spawn_calls,
       ctx.clear_body_calls
     )
@@ -445,7 +447,7 @@ local function job_stubs(spawn_calls)
   }
 end
 
-local function panel_stubs(vim_state, header_lines, clear_body_calls)
+local function panel_stubs(vim_state, header_lines, panel_names, clear_body_calls)
   return {
     ["android.ui.panel"] = {
       open = function() end,
@@ -456,6 +458,18 @@ local function panel_stubs(vim_state, header_lines, clear_body_calls)
       set_header_lines = function(lines)
         header_lines.value = lines
         set_header_lines_in_buffer(vim_state, lines)
+      end,
+      set_names = function(names)
+        if not panel_names then
+          return
+        end
+        local snapshot = {
+          body = names and names.body or nil,
+          control = names and names.control or nil,
+        }
+        panel_names.value = snapshot
+        panel_names.history = panel_names.history or {}
+        panel_names.history[#panel_names.history + 1] = snapshot
       end,
       clear_body = function()
         clear_body_calls.count = clear_body_calls.count + 1
@@ -472,7 +486,7 @@ local function panel_stubs(vim_state, header_lines, clear_body_calls)
   }
 end
 
-function M.default_stubs(vim_state, state, header_lines, spawn_calls, clear_body_calls)
+function M.default_stubs(vim_state, state, header_lines, panel_names, spawn_calls, clear_body_calls)
   return stubs_helper.merge_stubs(
     context_stubs(state),
     discovery_stubs(),
@@ -483,7 +497,7 @@ function M.default_stubs(vim_state, state, header_lines, spawn_calls, clear_body
     command_stubs(),
     parser_stubs(),
     job_stubs(spawn_calls),
-    panel_stubs(vim_state, header_lines, clear_body_calls)
+    panel_stubs(vim_state, header_lines, panel_names, clear_body_calls)
   )
 end
 return M

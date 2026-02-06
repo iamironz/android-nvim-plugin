@@ -9,6 +9,8 @@ local header_lines = {}
 local header_count = 0
 local group_augroup = nil
 local closing_group = false
+local body_name = nil
+local control_name = nil
 
 local function buffer_valid()
   return body_buf_id and vim.api.nvim_buf_is_valid(body_buf_id)
@@ -22,6 +24,19 @@ local function controls_enabled()
   return mode == "dock"
 end
 
+local function set_buffer_name(buf, name)
+  if not buf or not vim.api.nvim_buf_is_valid(buf) then
+    return
+  end
+  if type(name) ~= "string" or name == "" then
+    return
+  end
+  if type(vim.api.nvim_buf_set_name) ~= "function" then
+    return
+  end
+  pcall(vim.api.nvim_buf_set_name, buf, name)
+end
+
 local function ensure_body_buffer()
   if body_buf_id and vim.api.nvim_buf_is_valid(body_buf_id) then
     return
@@ -31,6 +46,7 @@ local function ensure_body_buffer()
   vim.api.nvim_buf_set_option(body_buf_id, "swapfile", false)
   vim.api.nvim_buf_set_option(body_buf_id, "filetype", "android-log")
   vim.api.nvim_buf_set_option(body_buf_id, "modifiable", false)
+  set_buffer_name(body_buf_id, body_name)
 end
 
 local function ensure_control_buffer()
@@ -42,6 +58,7 @@ local function ensure_control_buffer()
   vim.api.nvim_buf_set_option(control_buf_id, "swapfile", false)
   vim.api.nvim_buf_set_option(control_buf_id, "filetype", "android-log-controls")
   vim.api.nvim_buf_set_option(control_buf_id, "modifiable", false)
+  set_buffer_name(control_buf_id, control_name)
 end
 
 local function set_lines(buf, start, finish, lines)
@@ -279,6 +296,19 @@ function M.set_header_lines(lines)
     merged[#merged + 1] = line
   end
   set_lines(body_buf_id, 0, -1, merged)
+end
+
+function M.set_names(names)
+  local next_names = names or {}
+  body_name = next_names.body
+  control_name = next_names.control
+
+  if buffer_valid() then
+    set_buffer_name(body_buf_id, body_name)
+  end
+  if control_buffer_valid() then
+    set_buffer_name(control_buf_id, control_name)
+  end
 end
 
 function M.clear_body()

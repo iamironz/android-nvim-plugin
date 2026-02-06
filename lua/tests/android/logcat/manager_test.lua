@@ -52,6 +52,7 @@ local function manager_context(options, fn)
       vim_state,
       state,
       header_lines,
+      nil,
       spawn_calls,
       clear_body_calls
     )

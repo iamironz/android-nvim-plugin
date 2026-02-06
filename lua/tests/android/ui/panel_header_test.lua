@@ -43,11 +43,58 @@ local function build_header_defaults_to_empty_filter()
   assert.table_eq(lines, { "Filter: " }, "build defaults")
 end
 
+local function logcat_panel_names_include_selected_values()
+  local header = load_header()
+
+  local names = header.logcat_panel_names({
+    module = ":app",
+    variant = "debug",
+    package = "com.example.app",
+    filter = "Auth",
+    level = "W",
+  })
+
+  assert.eq(
+    names.body,
+    "android://logcat module=:app variant=debug app=com.example.app filter=Auth level=W",
+    "logcat body name"
+  )
+  assert.eq(
+    names.control,
+    "android://logcat-controls module=:app variant=debug app=com.example.app filter=Auth level=W",
+    "logcat control name"
+  )
+end
+
+local function build_panel_names_include_selected_values()
+  local header = load_header()
+
+  local names = header.build_panel_names({
+    module = ":app",
+    variant = "debug",
+    task = "assembleDebug",
+    filter = "warn",
+  })
+
+  assert.eq(
+    names.body,
+    "android://build module=:app variant=debug task=assembleDebug filter=warn",
+    "build body name"
+  )
+  assert.eq(
+    names.control,
+    "android://build-controls module=:app variant=debug task=assembleDebug filter=warn",
+    "build control name"
+  )
+end
+
 function M.run()
   logcat_header_returns_package_and_filter_lines()
   logcat_header_defaults_to_empty_values()
   build_header_returns_filter_line()
   build_header_defaults_to_empty_filter()
+  logcat_panel_names_include_selected_values()
+  build_panel_names_include_selected_values()
 end
 
 return M

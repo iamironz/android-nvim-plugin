@@ -12,6 +12,8 @@ function M.make_panel_state()
     header_history = {},
     replaced_body = nil,
     replaced_body_history = {},
+    names = nil,
+    name_history = {},
   }
 end
 
@@ -83,6 +85,14 @@ function M.make_panel_stub(panel_state, vim_state)
       if trimmed then
         panel_state.lines = trimmed
       end
+    end,
+    set_names = function(names)
+      local snapshot = {
+        body = names and names.body or nil,
+        control = names and names.control or nil,
+      }
+      panel_state.names = snapshot
+      panel_state.name_history[#panel_state.name_history + 1] = snapshot
     end,
   }
 end
