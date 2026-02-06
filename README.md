@@ -57,10 +57,14 @@ Full first-run walkthrough: [docs/getting-started.md](docs/getting-started.md)
 
 ### Commands and Keymaps
 
-- **Five commands:** `:AndroidMenu`, `:AndroidTargets`, `:AndroidTools`,
-  `:AndroidActions`, `:AndroidBuild`.
-- **Default keymaps** (`<leader>am/at/ao/aa/ab`) with `<Plug>` mappings.
-  Configurable or can be disabled.
+- **Command surface:** 13 zero-arg user commands.
+- **Default shortcuts (unchanged):** `:AndroidMenu`, `:AndroidTargets`,
+  `:AndroidTools`, `:AndroidActions`, and `:AndroidBuild` on
+  `<leader>am/at/ao/aa/ab`.
+- **Direct commands (no default shortcut):** `:AndroidRun`, `:AndroidRunStop`,
+  `:AndroidLogcat`, `:AndroidBuildPrompt`, `:AndroidBuildAssemble`,
+  `:AndroidGradleTasks`, `:AndroidIOSBuild`, `:AndroidIOSDeploy`.
+- **Custom mapping support:** every command has a matching `<Plug>` mapping.
   See [docs/reference/keymaps.md](docs/reference/keymaps.md).
 
 ### Navigation and UX
@@ -75,13 +79,13 @@ Full first-run walkthrough: [docs/getting-started.md](docs/getting-started.md)
 
 - **One-key build and deploy.** `:AndroidBuild` resolves module/variant from
   saved defaults, builds, installs, launches, and opens logcat.
-- **Prompt-driven builds.** Interactive module/variant selection to override defaults.
-- **Assemble-only mode.** Build without deploying.
+- **Prompt-driven builds.** `:AndroidBuildPrompt` picks module/variant for one run.
+- **Assemble-only mode.** `:AndroidBuildAssemble` builds without deploying.
 - **Default variant detection.** Reads `isDefault` markers from `buildTypes` and
   `productFlavors` in build.gradle to auto-select the right variant.
 - **APK discovery.** Resolves by variant, scans flavor subdirectories, supports
   path overrides and full-scan fallback.
-- **Gradle task browser.** Browse and run any task via `:Telescope android tasks`.
+- **Gradle task browser.** Browse and run any task via `:AndroidGradleTasks`.
 - **Build output dock.** Bottom panel with real-time streaming, text filter
   with history, and quickfix-ready error highlighting.
 - **Quickfix integration.** Kotlin and Java errors parsed into quickfix list on
@@ -90,12 +94,13 @@ Full first-run walkthrough: [docs/getting-started.md](docs/getting-started.md)
 
 ### iOS Build and Deploy
 
-- **xcodebuild integration.** Builds with auto-discovered schemes.
-- **Simulator and physical device deploy.** Discovers booted simulator or paired
-  device, installs and launches.
+- **xcodebuild integration.** `:AndroidIOSBuild` builds with auto-discovered schemes.
+- **Simulator and physical device deploy.** `:AndroidIOSDeploy` discovers booted
+  simulator or paired device, installs, and launches.
 
 ### Logcat
 
+- **Direct command.** `:AndroidLogcat` opens the dock panel on demand.
 - **Dock panel.** Fixed control header (package/filter/level) and scrolling
   output with syntax highlighting by log level.
 - **Package filtering.** Auto-detects from APK, manifest, or build.gradle.
@@ -121,6 +126,8 @@ Full first-run walkthrough: [docs/getting-started.md](docs/getting-started.md)
 
 - **Multi-target.** Android, iOS, JVM, Gradle task, and shell configs
   auto-discovered from a single menu.
+- **Direct run controls.** `:AndroidRun` starts the selected run config and
+  `:AndroidRunStop` stops active jobs.
 - **Run All.** Parallel execution across target types. Ordering and preferred
   modules configurable via `run.run_all`.
 - **JSON shell configs.** Custom commands in `.android.nvim.json` with real-time

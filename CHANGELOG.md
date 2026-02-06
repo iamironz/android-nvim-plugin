@@ -6,6 +6,20 @@ The format is based on Keep a Changelog and this project adheres to SemVer.
 
 ## [Unreleased]
 
+### Added
+
+- Eight direct zero-arg commands with `<Plug>` mappings:
+  `:AndroidRun`, `:AndroidRunStop`, `:AndroidLogcat`, `:AndroidBuildPrompt`,
+  `:AndroidBuildAssemble`, `:AndroidGradleTasks`, `:AndroidIOSBuild`,
+  `:AndroidIOSDeploy`.
+
+### Changed
+
+- Default leader mappings remain unchanged and limited to:
+  `<leader>am`, `<leader>at`, `<leader>ao`, `<leader>aa`, `<leader>ab`.
+- README, reference docs, and guides now distinguish default-shortcut commands
+  from direct commands that have no default shortcut.
+
 ## [0.4.0] - 2026-02-06
 
 ### Added

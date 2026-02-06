@@ -1,53 +1,172 @@
 local M = {}
 M._schedule = vim.schedule
 
-local keymap_definitions = {
-  menu = {
+local command_definitions = {
+  {
+    key = "menu",
     command = "AndroidMenu",
     plug = "AndroidMenu",
-    desc = "Android menu",
+    keymap_desc = "Android menu",
+    command_desc = "Show Android menu",
+    default_lhs = "<leader>am",
+    run = function(deps)
+      deps.menu.show_main_menu()
+    end,
   },
-  targets = {
+  {
+    key = "targets",
     command = "AndroidTargets",
     plug = "AndroidTargets",
-    desc = "Android build menu",
+    keymap_desc = "Android build menu",
+    command_desc = "Show Android targets menu",
+    default_lhs = "<leader>at",
+    run = function(deps)
+      deps.menu.show_targets_menu()
+    end,
   },
-  tools = {
+  {
+    key = "tools",
     command = "AndroidTools",
     plug = "AndroidTools",
-    desc = "Android tools menu",
+    keymap_desc = "Android tools menu",
+    command_desc = "Show Android tools menu",
+    default_lhs = "<leader>ao",
+    run = function(deps)
+      deps.menu.show_tools_menu()
+    end,
   },
-  actions = {
+  {
+    key = "actions",
     command = "AndroidActions",
     plug = "AndroidActions",
-    desc = "Android actions picker",
+    keymap_desc = "Android actions picker",
+    command_desc = "Open Android actions picker",
+    default_lhs = "<leader>aa",
+    run = function(deps)
+      deps.menu.show_actions_menu()
+    end,
   },
-  build = {
+  {
+    key = "build",
     command = "AndroidBuild",
     plug = "AndroidBuild",
-    desc = "Android build default",
+    keymap_desc = "Android build default",
+    command_desc = "Build Android with defaults",
+    default_lhs = "<leader>ab",
+    run = function(deps)
+      deps.build.build_default()
+    end,
+  },
+  {
+    key = "run",
+    command = "AndroidRun",
+    plug = "AndroidRun",
+    keymap_desc = "Android run current config",
+    command_desc = "Run current Android config",
+    run = function(deps)
+      deps.run_executor.execute_default()
+    end,
+  },
+  {
+    key = "run_stop",
+    command = "AndroidRunStop",
+    plug = "AndroidRunStop",
+    keymap_desc = "Android stop run jobs",
+    command_desc = "Stop active Android run jobs",
+    run = function(deps)
+      deps.run_executor.stop_active()
+    end,
+  },
+  {
+    key = "logcat",
+    command = "AndroidLogcat",
+    plug = "AndroidLogcat",
+    keymap_desc = "Android open logcat",
+    command_desc = "Open Android logcat",
+    run = function(deps)
+      deps.logcat.open()
+    end,
+  },
+  {
+    key = "build_prompt",
+    command = "AndroidBuildPrompt",
+    plug = "AndroidBuildPrompt",
+    keymap_desc = "Android build with prompts",
+    command_desc = "Build Android with prompts",
+    run = function(deps)
+      deps.build.build_prompt()
+    end,
+  },
+  {
+    key = "build_assemble",
+    command = "AndroidBuildAssemble",
+    plug = "AndroidBuildAssemble",
+    keymap_desc = "Android build assemble only",
+    command_desc = "Build Android assemble only",
+    run = function(deps)
+      deps.build.build_pure()
+    end,
+  },
+  {
+    key = "gradle_tasks",
+    command = "AndroidGradleTasks",
+    plug = "AndroidGradleTasks",
+    keymap_desc = "Android gradle tasks picker",
+    command_desc = "Open Android Gradle tasks picker",
+    run = function(deps)
+      deps.gradle_tasks.open()
+    end,
+  },
+  {
+    key = "ios_build",
+    command = "AndroidIOSBuild",
+    plug = "AndroidIOSBuild",
+    keymap_desc = "Android iOS build",
+    command_desc = "Build iOS project",
+    run = function(deps)
+      deps.ios_build.build()
+    end,
+  },
+  {
+    key = "ios_deploy",
+    command = "AndroidIOSDeploy",
+    plug = "AndroidIOSDeploy",
+    keymap_desc = "Android iOS deploy",
+    command_desc = "Deploy iOS project",
+    run = function(deps)
+      deps.ios_build.deploy()
+    end,
   },
 }
 
+local command_by_key = {}
+for _, entry in ipairs(command_definitions) do
+  command_by_key[entry.key] = entry
+end
+
 local function set_plug_keymaps()
-  for _, entry in pairs(keymap_definitions) do
+  for _, entry in ipairs(command_definitions) do
     vim.keymap.set(
       "n",
       "<Plug>(" .. entry.plug .. ")",
       "<Cmd>" .. entry.command .. "<CR>",
-      { silent = true, desc = entry.desc }
+      { silent = true, desc = entry.keymap_desc }
     )
   end
 end
 
+local function default_keymaps()
+  local defaults = {}
+  for _, entry in ipairs(command_definitions) do
+    if entry.default_lhs then
+      defaults[entry.key] = entry.default_lhs
+    end
+  end
+  return defaults
+end
+
 local function resolve_default_keymaps(config)
-  local defaults = {
-    menu = "<leader>am",
-    targets = "<leader>at",
-    tools = "<leader>ao",
-    actions = "<leader>aa",
-    build = "<leader>ab",
-  }
+  local defaults = default_keymaps()
   local mappings = (config and config.mappings) or {}
   local resolved = {}
   for key, value in pairs(defaults) do
@@ -70,13 +189,13 @@ local function set_default_keymaps(config)
   local mappings = resolve_default_keymaps(config)
   for key, lhs in pairs(mappings) do
     if lhs then
-      local entry = keymap_definitions[key]
+      local entry = command_by_key[key]
       if entry then
         vim.keymap.set(
           "n",
           lhs,
           "<Plug>(" .. entry.plug .. ")",
-          { silent = true, desc = entry.desc, remap = true }
+          { silent = true, desc = entry.keymap_desc, remap = true }
         )
       end
     end
@@ -164,48 +283,51 @@ local function schedule_logcat_restore(workspace_root, ui_config)
   end)
 end
 
-function M.setup(opts)
-  local config = require("android.config").setup(opts or {})
-
-  local menu = require("android.ui.menu")
-  local build = require("android.actions.build")
-  local autosave = require("android.ui.autosave")
-  local file_watcher = require("android.ui.file_watcher")
+local function setup_workspace_features(config, deps)
   local ui_config = type(config.ui) == "table" and config.ui or nil
   local autosave_enabled = ui_config == nil or ui_config.autosave ~= false
   local file_watcher_enabled = ui_config == nil or ui_config.file_watcher ~= false
-
   local workspace_root = resolve_workspace_root()
+
   if workspace_root then
     if autosave_enabled then
-      autosave.setup()
+      deps.autosave.setup()
     end
     if file_watcher_enabled then
-      file_watcher.setup({ workspace_root = workspace_root })
+      deps.file_watcher.setup({ workspace_root = workspace_root })
     end
   end
+
   schedule_logcat_restore(workspace_root, ui_config)
+end
 
-  vim.api.nvim_create_user_command("AndroidMenu", function()
-    menu.show_main_menu()
-  end, { desc = "Show Android menu" })
+local function load_setup_dependencies()
+  return {
+    menu = require("android.ui.menu"),
+    build = require("android.actions.build"),
+    run_executor = require("android.run.executor"),
+    logcat = require("android.actions.logcat"),
+    gradle_tasks = require("android.actions.gradle_tasks"),
+    ios_build = require("android.actions.ios.build"),
+    autosave = require("android.ui.autosave"),
+    file_watcher = require("android.ui.file_watcher"),
+  }
+end
 
-  vim.api.nvim_create_user_command("AndroidTargets", function()
-    menu.show_targets_menu()
-  end, { desc = "Show Android targets menu" })
+local function register_user_commands(deps)
+  for _, entry in ipairs(command_definitions) do
+    vim.api.nvim_create_user_command(entry.command, function()
+      entry.run(deps)
+    end, { desc = entry.command_desc })
+  end
+end
 
-  vim.api.nvim_create_user_command("AndroidTools", function()
-    menu.show_tools_menu()
-  end, { desc = "Show Android tools menu" })
+function M.setup(opts)
+  local config = require("android.config").setup(opts or {})
+  local deps = load_setup_dependencies()
 
-  vim.api.nvim_create_user_command("AndroidActions", function()
-    menu.show_actions_menu()
-  end, { desc = "Open Android actions picker" })
-
-  vim.api.nvim_create_user_command("AndroidBuild", function()
-    build.build_default()
-  end, { desc = "Build Android with defaults" })
-
+  setup_workspace_features(config, deps)
+  register_user_commands(deps)
   set_plug_keymaps()
   set_default_keymaps(config.keymaps)
 end

@@ -6,18 +6,25 @@ Describe build entry points, what each one does, and how to use the build output
 
 ## Default Behavior
 
-`AndroidBuild` uses saved module and variant, deploys to selected device or emulator,
+`:AndroidBuild` uses saved module and variant, deploys to selected device or emulator,
 updates logcat package selection, and opens logcat when successful.
 
 ## Build Entry Points
 
-| Entry | Use It When |
-| --- | --- |
-| `:AndroidBuild` | You want fast build+deploy with saved defaults |
-| Build default | Same as `:AndroidBuild`, from menu |
-| Build assemble only | You need output artifacts without deploy |
-| Build with prompts | You need to override module/variant for this run |
-| Gradle tasks | You need a task outside the standard flow |
+| Entry Point | Default Shortcut | Use It When |
+| --- | --- | --- |
+| `:AndroidBuild` | `<leader>ab` | You want fast build+deploy with saved defaults |
+| `:AndroidBuildPrompt` | None | You want module/variant prompts for one run |
+| `:AndroidBuildAssemble` | None | You need output artifacts without deploy |
+| `:AndroidGradleTasks` | None | You need a task outside the standard flow |
+| `:AndroidIOSBuild` | None | You need to build an iOS workspace/project |
+| `:AndroidIOSDeploy` | None | You need to deploy iOS app to simulator/device |
+| AndroidMenu `Build default` | `<leader>am` then menu | Same action as `:AndroidBuild` |
+| AndroidMenu `Build with prompts` | `<leader>am` then menu | Same action as `:AndroidBuildPrompt` |
+| AndroidMenu `Build assemble only` | `<leader>am` then menu | Same action as `:AndroidBuildAssemble` |
+| AndroidMenu `Gradle tasks` | `<leader>am` then menu | Same action as `:AndroidGradleTasks` |
+| AndroidMenu `iOS build` | `<leader>am` then menu | Same action as `:AndroidIOSBuild` |
+| AndroidMenu `iOS deploy` | `<leader>am` then menu | Same action as `:AndroidIOSDeploy` |
 
 ## Build Output Dock
 
@@ -42,8 +49,11 @@ Filter syntax supports space-separated terms and `/regex/` patterns.
 
 ## Recommended Flow
 
-1. Use `Build default` during normal iteration.
-1. Switch to `Build with prompts` only when changing module/variant.
+1. Use `:AndroidBuild` during normal Android iteration.
+1. Switch to `:AndroidBuildPrompt` only when changing module/variant.
+1. Use `:AndroidBuildAssemble` when you only need APK artifacts.
+1. Use `:AndroidGradleTasks` for one-off or custom Gradle tasks.
+1. Use `:AndroidIOSBuild` and `:AndroidIOSDeploy` for iOS projects.
 1. Use filter in dock to isolate failing task output before opening quickfix.
 
 ## Related Docs

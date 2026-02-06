@@ -81,10 +81,36 @@ require("android").setup({
 ### keymaps
 
 - `enabled` (boolean): enable default command mappings.
-- `mappings` (table): override mappings by key.
+- `mappings` (table): override default mapping keys `menu`, `targets`, `tools`,
+  `actions`, and `build`.
   Set value to `false` or `""` to disable mapping.
+- Direct commands (`:AndroidRun`, `:AndroidRunStop`, `:AndroidLogcat`,
+  `:AndroidBuildPrompt`, `:AndroidBuildAssemble`, `:AndroidGradleTasks`,
+  `:AndroidIOSBuild`, `:AndroidIOSDeploy`) do not have config-backed default
+  mapping keys. Map them with their `<Plug>` mappings.
+
+## Examples
+
+Disable one default mapping and keep the rest:
+
+```lua
+require("android").setup({
+  keymaps = {
+    mappings = {
+      actions = false,
+    },
+  },
+})
+```
+
+Add a key for a direct command:
+
+```lua
+vim.keymap.set("n", "<leader>ar", "<Plug>(AndroidRun)", { remap = true, silent = true })
+```
 
 ## Related Docs
 
+- Commands: [commands.md](commands.md)
 - Keymaps: [keymaps.md](keymaps.md)
 - Run config behavior: [../guides/run-configs.md](../guides/run-configs.md)

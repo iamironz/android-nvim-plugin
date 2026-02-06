@@ -4,9 +4,18 @@
 
 Explain logcat panel layout, controls, filter behavior, and expected runtime behavior.
 
-## Opening Logcat
+## Default Behavior
 
-Open logcat from AndroidMenu (`Logcat -> Logcat`) or via successful `AndroidBuild` flow.
+`:AndroidBuild` opens logcat automatically after a successful Android deploy and
+updates package selection to the deployed app.
+
+## Entry Points
+
+| Entry Point | Default Shortcut | Notes |
+| --- | --- | --- |
+| `:AndroidLogcat` | None | Opens logcat directly |
+| AndroidMenu `Logcat -> Logcat` | `<leader>am` then menu | Same logcat action from hub |
+| Successful `:AndroidBuild` | `<leader>ab` | Opens logcat after deploy |
 
 ## Dock Layout
 
@@ -49,6 +58,14 @@ Examples:
 - Logcat reconnect is automatic with retry backoff.
 - Status lines report retry/disconnect state.
 - Pause keeps incoming lines in backlog and flushes on resume.
+
+## Recommended Flow
+
+1. Open logcat with `:AndroidLogcat`.
+1. Set package and level from the control strip.
+1. Add a text or regex filter to reduce noise.
+1. Pause while inspecting long output, then resume to flush backlog.
+1. Press `<CR>` on stack-trace lines to jump to source.
 
 ## Related Docs
 

@@ -7,6 +7,7 @@ This page defines default command mappings and panel-local controls.
 ## Default Command Mappings
 
 Defaults apply when `keymaps.enabled = true`.
+Only these five commands receive default leader mappings.
 
 | Mapping | Command | Plug Mapping |
 | --- | --- | --- |
@@ -15,6 +16,21 @@ Defaults apply when `keymaps.enabled = true`.
 | `<leader>ao` | `:AndroidTools` | `<Plug>(AndroidTools)` |
 | `<leader>aa` | `:AndroidActions` | `<Plug>(AndroidActions)` |
 | `<leader>ab` | `:AndroidBuild` | `<Plug>(AndroidBuild)` |
+
+## Additional Command Plug Mappings
+
+These commands have no default leader mapping.
+
+| Command | Plug Mapping |
+| --- | --- |
+| `:AndroidRun` | `<Plug>(AndroidRun)` |
+| `:AndroidRunStop` | `<Plug>(AndroidRunStop)` |
+| `:AndroidLogcat` | `<Plug>(AndroidLogcat)` |
+| `:AndroidBuildPrompt` | `<Plug>(AndroidBuildPrompt)` |
+| `:AndroidBuildAssemble` | `<Plug>(AndroidBuildAssemble)` |
+| `:AndroidGradleTasks` | `<Plug>(AndroidGradleTasks)` |
+| `:AndroidIOSBuild` | `<Plug>(AndroidIOSBuild)` |
+| `:AndroidIOSDeploy` | `<Plug>(AndroidIOSDeploy)` |
 
 Disable defaults:
 
@@ -37,6 +53,12 @@ require("android").setup({
     },
   },
 })
+```
+
+Map a direct command manually:
+
+```lua
+vim.keymap.set("n", "<leader>ar", "<Plug>(AndroidRun)", { remap = true, silent = true })
 ```
 
 ## Logcat Dock Controls
