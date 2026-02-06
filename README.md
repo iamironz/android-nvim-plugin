@@ -53,13 +53,43 @@ If you use another plugin manager, see [docs/install.md](docs/install.md).
 
 Full first-run walkthrough: [docs/getting-started.md](docs/getting-started.md)
 
-## What You Can Do
+## Features
 
-- Navigate hub menus with explicit section shortcuts and summary context.
-- Build and deploy with saved defaults or prompt-driven selections.
-- Inspect logcat in a docked panel with fixed controls and stack trace jumps.
-- Manage devices, emulators, and app install/clear/uninstall actions.
-- Run Android/iOS/JVM/Gradle/shell run configs, including `Run All` orchestration.
+### Navigation and UX
+
+- **Hub menus that explain themselves.** Summary panel, explicit section shortcuts
+  (`[1]`, `[2]`, ...), visible controls, search-first flow, and back navigation.
+  See [docs/guides/navigation.md](docs/guides/navigation.md).
+- **Picker flexibility.** Telescope support with automatic `vim.ui` fallback when
+  Telescope is unavailable.
+  See [docs/support/troubleshooting.md#telescope-missing](docs/support/troubleshooting.md#telescope-missing).
+
+### Build, Deploy, and Logs
+
+- **Build and deploy workflows.** Saved module/variant defaults, prompt-driven builds,
+  assemble-only mode, and Gradle task execution.
+  See [docs/guides/build-and-deploy.md](docs/guides/build-and-deploy.md).
+- **Build output that is actually usable.** Two-layer bottom dock with fixed filter
+  strip and quickfix integration for Kotlin/Java errors.
+  See [docs/guides/build-and-deploy.md](docs/guides/build-and-deploy.md).
+- **Logcat that stays in flow.** Package/filter/level controls, term and regex
+  filtering, pause/resume/restart, reconnect behavior, and stack trace jumps.
+  See [docs/guides/logcat.md](docs/guides/logcat.md).
+
+### Devices, Targets, and Workspace Context
+
+- **Device Manager and ADB actions.** Select device/AVD, start/stop emulator, install APK,
+  clear app data, and uninstall apps.
+  See [docs/guides/devices-and-adb.md](docs/guides/devices-and-adb.md).
+- **Run configs across targets.** Android, iOS, JVM, Gradle task, and JSON shell configs,
+  plus `Run All` orchestration via `run.run_all`.
+  See [docs/guides/run-configs.md](docs/guides/run-configs.md).
+- **Workspace-aware defaults and health checks.** Gradle/KMP/iOS detection, SDK discovery,
+  persistent selections, and `:checkhealth android`.
+  See [docs/reference/configuration.md](docs/reference/configuration.md) and
+  [docs/support/troubleshooting.md](docs/support/troubleshooting.md).
+- **Transparent roadmap.** Current support and planned gaps are tracked in
+  [docs/roadmap.md](docs/roadmap.md).
 
 ## Documentation
 
