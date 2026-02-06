@@ -110,13 +110,32 @@ local function set_buffer_name(buf, name)
   pcall(vim.api.nvim_buf_set_name, buf, name)
 end
 
+local function notify_panel_names_error(reason)
+  if type(vim.notify) ~= "function" then
+    return
+  end
+  local message = "Failed to resolve filter panel names"
+  if reason and reason ~= "" then
+    message = message .. ": " .. reason
+  end
+  vim.notify(message, vim.log.levels.WARN)
+end
+
 local function resolve_filter_panel_names(panel_names, query)
   if type(panel_names) == "function" then
     local ok, names = pcall(panel_names, query)
-    if ok and type(names) == "table" then
-      return names
+    if not ok then
+      notify_panel_names_error(tostring(names))
+      return nil
     end
-    return nil
+    if names == nil then
+      return nil
+    end
+    if type(names) ~= "table" then
+      notify_panel_names_error("expected table return")
+      return nil
+    end
+    return names
   end
   if type(panel_names) == "table" then
     return panel_names

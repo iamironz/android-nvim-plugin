@@ -187,11 +187,78 @@ local function filter_input_updates_prompt_and_results_buffer_names()
   assert.eq(name_calls[#name_calls], "22|android://filters-results query=warn", "results name")
 end
 
+local function filter_input_reports_panel_name_builder_errors()
+  local captured = { opts = nil }
+  local notifications = {}
+  local restore_notify = vim.notify
+
+  local stubs = {
+    ["telescope.pickers"] = {
+      new = function(_, opts)
+        captured.opts = opts
+        return { find = function() end }
+      end,
+    },
+    ["telescope.finders"] = { new_table = function() return {} end },
+    ["telescope.config"] = { values = { generic_sorter = function() return {} end } },
+    ["telescope.themes"] = { get_dropdown = function() return {} end },
+    ["telescope.actions"] = {
+      close = function() end,
+      select_default = {
+        replace = function() end,
+      },
+    },
+    ["telescope.actions.state"] = {
+      get_selected_entry = function() return nil end,
+      get_current_line = function() return "typed" end,
+      get_current_picker = function()
+        return { results_bufnr = 22 }
+      end,
+    },
+  }
+
+  local ok, err = pcall(function()
+    vim.notify = function(message, level)
+      notifications[#notifications + 1] = { message = message, level = level }
+    end
+
+    stubs_helper.with_stubs(stubs, function()
+      package.loaded["android.ui.picker"] = nil
+      local picker = require("android.ui.picker")
+      picker.filter_input({
+        prompt_title = "Filter",
+        panel_names = function()
+          error("builder failed")
+        end,
+      })
+    end)
+
+    if captured.opts and captured.opts.attach_mappings then
+      captured.opts.attach_mappings(11, function() end)
+    end
+    if captured.opts and captured.opts.on_input_filter_cb then
+      captured.opts.on_input_filter_cb("warn")
+    end
+  end)
+
+  vim.notify = restore_notify
+
+  if not ok then
+    error(err)
+  end
+
+  local notice = notifications[#notifications]
+  assert.eq(type(notice), "table", "error notification")
+  assert.eq(notice.level, vim.log.levels.WARN, "error notification level")
+  assert.contains(notice.message, "Failed to resolve filter panel names", "error message")
+end
+
 function M.run()
   filter_input_calls_on_change()
   filter_input_does_not_accept_on_change()
   filter_input_accepts_selection()
   filter_input_updates_prompt_and_results_buffer_names()
+  filter_input_reports_panel_name_builder_errors()
 end
 
 return M
