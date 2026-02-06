@@ -117,7 +117,7 @@ local function persist_filter_history(root, state, list)
   if not root or root == "" then
     return
   end
-  local next_state = state or {}
+  local next_state = context.load_state(root) or state or {}
   next_state.build = next_state.build or {}
   next_state.build.filter_history = list
   context.save_state(root, next_state)

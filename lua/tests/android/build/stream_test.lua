@@ -144,6 +144,7 @@ local function run_filter_input(options)
     input = {
       value = opts.value,
       change_value = opts.change_value,
+      before_accept = opts.before_accept,
       cancel = opts.cancel,
       calls = {},
     },
@@ -155,6 +156,28 @@ local function run_filter_input(options)
       end
     end,
   })
+end
+
+local function filter_history_persist_keeps_external_run_selection()
+  local state = {
+    build = { filter_history = { "old" } },
+    run = { config_id = "android" },
+  }
+  local outcome = run_filter_input({
+    state = state,
+    change_value = "new",
+    value = "new",
+    before_accept = function()
+      local action_context = require("android.actions.context")
+      action_context.save_state("/root", {
+        build = { filter_history = { "old" } },
+        run = { config_id = "ios" },
+      })
+    end,
+  })
+
+  local run_config = outcome.saved_state and outcome.saved_state.run and outcome.saved_state.run.config_id
+  assert.eq(run_config, "ios", "run config preserved")
 end
 
 local function filter_keymap_opens_modal()
@@ -290,6 +313,7 @@ function M.run()
   filter_picker_receives_history()
   filter_history_persists()
   filter_history_persists_on_cancel()
+  filter_history_persist_keeps_external_run_selection()
   build_output_caps_lines()
 end
 

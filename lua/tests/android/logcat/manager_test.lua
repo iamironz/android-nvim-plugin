@@ -271,6 +271,33 @@ local function restore_on_startup_preserves_origin_focus()
   end)
 end
 
+local function logcat_persist_state_keeps_external_run_selection()
+  manager_context({
+    state = {
+      run = { config_id = "android" },
+      logcat = {
+        restore_on_startup = true,
+      },
+    },
+  }, function(ctx)
+    ctx.manager.open()
+
+    local action_context = require("android.actions.context")
+    action_context.save_state("/workspace", {
+      run = { config_id = "ios" },
+      logcat = {
+        restore_on_startup = true,
+      },
+    })
+
+    ctx.selection.value = "W"
+    ctx.vim_state.keymaps["n"]["gl"]()
+
+    local saved_state = action_context.load_state("/workspace")
+    assert.eq(saved_state.run and saved_state.run.config_id, "ios", "run config preserved")
+  end)
+end
+
 local function reopen_with_new_panel_buffers_rebinds_logcat_shortcuts()
   local handles = {
     { buf = 1, win = 10, control_buf = 2, control_win = 11 },
@@ -343,6 +370,7 @@ function M.run()
   restore_on_startup_opens_logcat_when_enabled()
   restore_on_startup_skips_when_disabled()
   restore_on_startup_preserves_origin_focus()
+  logcat_persist_state_keeps_external_run_selection()
   reopen_with_new_panel_buffers_rebinds_logcat_shortcuts()
   reopen_after_close_restarts_stream_and_renders_output()
 end

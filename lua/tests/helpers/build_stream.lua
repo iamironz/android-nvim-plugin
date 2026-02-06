@@ -56,6 +56,9 @@ local function build_job_stubs(config, job_state)
         if config.input.change_value and opts.on_change then
           opts.on_change(config.input.change_value)
         end
+        if config.input.before_accept then
+          config.input.before_accept(opts)
+        end
         if config.input.cancel then
           if opts.on_cancel then
             opts.on_cancel()

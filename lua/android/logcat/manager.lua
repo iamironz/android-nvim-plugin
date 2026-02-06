@@ -14,6 +14,19 @@ local sessions = {}
 local active_config_id = nil
 local DEFAULT_CONTROL_HEIGHT = 3
 
+local function load_latest_state(workspace_root, fallback_state)
+  if not workspace_root or workspace_root == "" then
+    return fallback_state or {}
+  end
+
+  local latest = context.load_state(workspace_root)
+  if type(latest) == "table" then
+    return latest
+  end
+
+  return fallback_state or {}
+end
+
 local function workspace_root_from_sessions()
   for _, session in pairs(sessions) do
     if session and type(session.root) == "string" and session.root ~= "" then
@@ -32,7 +45,7 @@ local function set_restore_on_startup(workspace_root, state, enabled)
   if not workspace_root or workspace_root == "" then
     return state
   end
-  local next_state = state or context.load_state(workspace_root) or {}
+  local next_state = load_latest_state(workspace_root, state)
   next_state.logcat = next_state.logcat or {}
   if next_state.logcat.restore_on_startup == enabled then
     return next_state
@@ -87,7 +100,7 @@ end
 
 local function persist_logcat_state(root, state, config_id, updates, opts)
   local options = opts or {}
-  local next_state = state or {}
+  local next_state = load_latest_state(root, state)
   next_state.logcat = next_state.logcat or {}
   local sessions_state = next_state.logcat.sessions or {}
   local entry = sessions_state[config_id] or {}
