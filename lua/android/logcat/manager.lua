@@ -251,6 +251,9 @@ local function ensure_session(workspace, config_id, origin_win, state, panel_han
     })
     sessions[config_id] = session
   else
+    local rebind_keymaps = session.buf ~= buf or session.control_buf ~= control_buf
+    local rebind_autocmds = session.buf ~= buf or session.win ~= win
+
     session.buf = buf
     session.win = win
     session.control_buf = control_buf
@@ -260,6 +263,13 @@ local function ensure_session(workspace, config_id, origin_win, state, panel_han
     session.origin_win = origin_win
     session.on_close = function() close_panel() end
     session.on_switch = function() switch_config(session) end
+
+    if rebind_keymaps then
+      session.keymaps_ready = false
+    end
+    if rebind_autocmds then
+      session.autocmds_ready = false
+    end
   end
   configure_session(session, workspace, state, origin_win, config_id)
   session_module.setup_autocmds(session, stop_all_sessions)

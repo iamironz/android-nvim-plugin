@@ -235,6 +235,69 @@ local function restore_on_startup_skips_when_disabled()
   end)
 end
 
+local function reopen_with_new_panel_buffers_rebinds_logcat_shortcuts()
+  local handles = {
+    { buf = 1, win = 10, control_buf = 2, control_win = 11 },
+    { buf = 21, win = 30, control_buf = 22, control_win = 31 },
+  }
+  local handle_index = 0
+  local current_handle = handles[1]
+
+  manager_context({
+    stubs = {
+      ["android.ui.panel"] = {
+        open = function()
+          handle_index = handle_index + 1
+          current_handle = handles[handle_index] or handles[#handles]
+          return current_handle
+        end,
+        handle = function()
+          return current_handle
+        end,
+        clear = function() end,
+        append = function() end,
+        set_header_lines = function() end,
+        clear_body = function() end,
+        replace_body = function() end,
+        trim_body = function() end,
+        close = function()
+          return true
+        end,
+      },
+    },
+  }, function(ctx)
+    ctx.manager.open()
+    assert.is_true(ctx.vim_state.buffer_keymaps[1]["n"]["q"] ~= nil, "first body map")
+    assert.is_true(ctx.vim_state.buffer_keymaps[2]["n"]["q"] ~= nil, "first control map")
+
+    ctx.vim_state.keymaps["n"]["q"]()
+    ctx.manager.open()
+
+    local second_body = ctx.vim_state.buffer_keymaps[21]
+    local second_control = ctx.vim_state.buffer_keymaps[22]
+    assert.is_true(second_body and second_body["n"] and second_body["n"]["q"] ~= nil, "second body map")
+    assert.is_true(
+      second_control and second_control["n"] and second_control["n"]["q"] ~= nil,
+      "second control map"
+    )
+  end)
+end
+
+local function reopen_after_close_restarts_stream_and_renders_output()
+  manager_context({ state = logcat_helpers.build_state() }, function(ctx)
+    ctx.manager.open()
+    assert.eq(ctx.spawn_calls.count, 1, "initial spawn")
+
+    ctx.vim_state.keymaps["n"]["q"]()
+
+    ctx.manager.open()
+    assert.eq(ctx.spawn_calls.count, 2, "reopen spawn")
+
+    ctx.job_callbacks.on_stdout({ "after reopen" })
+    assert.table_eq(body_lines(ctx.vim_state), { "after reopen" }, "reopen output")
+  end)
+end
+
 function M.run()
   switcher_preserves_session_body_and_header()
   open_uses_dock_panel_layout()
@@ -243,6 +306,8 @@ function M.run()
   closing_panel_clears_restore_on_startup_flag()
   restore_on_startup_opens_logcat_when_enabled()
   restore_on_startup_skips_when_disabled()
+  reopen_with_new_panel_buffers_rebinds_logcat_shortcuts()
+  reopen_after_close_restarts_stream_and_renders_output()
 end
 
 return M

@@ -221,6 +221,10 @@ function M.ensure_started(session, opts)
     show_status(session, "Status: adb not found in Android SDK")
     return
   end
+  if session.stopped then
+    session.stopped = false
+    session.logcat_job = nil
+  end
   if session.logcat_job and session.logcat_job.ok then
     return
   end
@@ -246,9 +250,7 @@ function M.stop(session)
   end
   session.stopped = true
   reset_reconnect(session)
-  if session.logcat_job and session.logcat_job.ok then
-    session.logcat_job.stop()
-  end
+  stop_logcat_job(session)
 end
 
 function M.setup_autocmds(session, stop_all)

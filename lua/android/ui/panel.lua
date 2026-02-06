@@ -114,6 +114,34 @@ local function control_win_valid()
   return control_win_id and vim.api.nvim_win_is_valid(control_win_id)
 end
 
+local function window_in_current_tab(win)
+  if not win or not vim.api.nvim_win_is_valid(win) then
+    return false
+  end
+
+  if type(vim.api.nvim_get_current_tabpage) ~= "function"
+    or type(vim.api.nvim_win_get_tabpage) ~= "function"
+  then
+    return true
+  end
+
+  local ok_current, current_tab = pcall(vim.api.nvim_get_current_tabpage)
+  local ok_window, window_tab = pcall(vim.api.nvim_win_get_tabpage, win)
+  if not ok_current or not ok_window then
+    return true
+  end
+
+  return current_tab == window_tab
+end
+
+local function body_win_in_current_tab()
+  return window_in_current_tab(body_win_id)
+end
+
+local function control_win_in_current_tab()
+  return window_in_current_tab(control_win_id)
+end
+
 local function close_control_window()
   if close_window(control_win_id) then
     control_win_id = nil
@@ -169,7 +197,7 @@ local function open_dock(options)
   ensure_body_buffer()
   ensure_control_buffer()
 
-  if body_win_valid() and control_win_valid() then
+  if body_win_in_current_tab() and control_win_in_current_tab() then
     vim.api.nvim_win_set_buf(body_win_id, body_buf_id)
     pin_window_buffer(body_win_id)
     vim.api.nvim_win_set_buf(control_win_id, control_buf_id)
@@ -223,7 +251,7 @@ function M.open(opts)
   else
     ensure_body_buffer()
     close_control_window()
-    if body_win_valid() then
+    if body_win_in_current_tab() then
       vim.api.nvim_win_set_buf(body_win_id, body_buf_id)
       pin_window_buffer(body_win_id)
       vim.api.nvim_set_current_win(body_win_id)

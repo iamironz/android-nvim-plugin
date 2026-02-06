@@ -10,6 +10,8 @@ local function create_vim_state()
     buf_options = {},
     win_options = {},
     win_option_calls = {},
+    current_tab = 1,
+    win_tabs = { [1000] = 1 },
   }
 end
 
@@ -120,6 +122,7 @@ end
 local function mock_api_windows(state, mock_api)
   mock_api("nvim_win_set_buf", function(win, buf)
     state.windows[win] = buf
+    state.win_tabs[win] = state.win_tabs[win] or state.current_tab
   end)
 
   mock_api("nvim_get_current_win", function()
@@ -135,6 +138,18 @@ local function mock_api_windows(state, mock_api)
 
   mock_api("nvim_win_is_valid", function(win)
     return state.windows[win] ~= nil or win == 1000
+  end)
+
+  mock_api("nvim_get_current_tabpage", function()
+    return state.current_tab
+  end)
+
+  mock_api("nvim_win_get_tabpage", function(win)
+    return state.win_tabs[win] or state.current_tab
+  end)
+
+  mock_api("nvim_set_current_win", function(win)
+    state.win_tabs[win] = state.win_tabs[win] or state.current_tab
   end)
 
   mock_api("nvim_win_set_option", function(win, name, value)

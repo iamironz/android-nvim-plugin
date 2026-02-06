@@ -118,6 +118,8 @@ local function build_vim_state(options)
     input_value = opts.input_value or "",
     input_calls = {},
     keymaps = {},
+    buffer_keymaps = {},
+    keymap_calls = {},
     notify_calls = {},
     buffers = { [1] = { lines = { "" } } },
     attached = {},
@@ -175,9 +177,22 @@ end
 
 local function stub_keymap(state)
   return stub_table(vim.keymap, {
-    set = function(mode, lhs, rhs, _)
+    set = function(mode, lhs, rhs, opts)
       state.keymaps[mode] = state.keymaps[mode] or {}
       state.keymaps[mode][lhs] = rhs
+
+      local buffer = opts and opts.buffer or nil
+      if buffer then
+        state.buffer_keymaps[buffer] = state.buffer_keymaps[buffer] or {}
+        state.buffer_keymaps[buffer][mode] = state.buffer_keymaps[buffer][mode] or {}
+        state.buffer_keymaps[buffer][mode][lhs] = rhs
+      end
+
+      state.keymap_calls[#state.keymap_calls + 1] = {
+        mode = mode,
+        lhs = lhs,
+        buffer = buffer,
+      }
     end,
   })
 end
