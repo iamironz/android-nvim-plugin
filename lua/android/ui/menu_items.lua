@@ -324,9 +324,13 @@ local function logs_items(flags)
   return filter_items(items, flags)
 end
 
-function M.top_level_blocks(workspace)
+function M.top_level_blocks(workspace, opts)
   local resolved = resolve_workspace(workspace)
-  local snapshot = resolved and run_registry.snapshot(resolved) or {}
+  local options = opts or {}
+  local snapshot = options.run_snapshot or options.snapshot
+  if not snapshot then
+    snapshot = resolved and run_registry.snapshot(resolved) or {}
+  end
   local run_config = snapshot.current
   local flags = menu_flags(resolved, run_config)
 
@@ -364,8 +368,67 @@ function M.top_level_blocks(workspace)
   }
 end
 
-function M.block_by_title(title)
-  for _, block in ipairs(M.top_level_blocks()) do
+function M.top_level_blocks_fast(workspace)
+  local resolved = resolve_workspace(workspace)
+  local flags = menu_flags(resolved, nil)
+
+  local loading_configs = resolved
+      and {
+        {
+          id = "_loading",
+          label = "Loading configurations...",
+          desc = "Discovering run configurations",
+        },
+      }
+    or {}
+
+  return {
+    {
+      title = "Run Configurations",
+      desc = "Select the active run configuration.",
+      items = loading_configs,
+    },
+    {
+      title = "Run",
+      desc = "Run current configuration or stop runs.",
+      items = {
+        {
+          id = "run_current",
+          label = "Run loading...",
+          desc = "Run the selected configuration",
+        },
+        {
+          id = "run_stop",
+          label = "Stop run",
+          desc = "Stop the active run jobs",
+        },
+      },
+    },
+    {
+      title = "Build Variants",
+      desc = "Select module/variant, build, and Gradle tasks.",
+      items = build_items(flags),
+    },
+    {
+      title = "Device Manager",
+      desc = "Select devices/AVDs and manage emulators.",
+      items = devices_items(flags),
+    },
+    {
+      title = "ADB",
+      desc = "Install APKs, clear data, uninstall apps.",
+      items = apps_items(flags),
+    },
+    {
+      title = "Logcat",
+      desc = "Open logcat and diagnostics.",
+      items = logs_items(flags),
+    },
+  }
+end
+
+function M.block_by_title(title, workspace)
+  for _, block in ipairs(M.top_level_blocks_fast(workspace)) do
     if block.title == title then
       return block
     end

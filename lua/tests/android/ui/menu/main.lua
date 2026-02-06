@@ -103,20 +103,36 @@ local function main_menu_on_cancel_reopens_hub()
 end
 
 local function main_menu_passes_menu_status_to_summary()
-  local received = nil
+  local received_calls = {}
+  local scheduled_fn = nil
+  local updated_opts = nil
+  local prefetch_status = {
+    items = { { label = "Gradle tasks", value = "loading..." } },
+    run_snapshot = { list = {}, current = nil },
+  }
   local stubs = {
     ["android.ui.menu_items"] = {
+      top_level_blocks_fast = function()
+        return { { title = "Run", items = { { id = "run_current" } } } }
+      end,
       top_level_blocks = function()
         return { { title = "Run", items = { { id = "run_current" } } } }
       end,
     },
     ["android.ui.summary"] = {
       lines = function(opts)
-        received = opts and opts.menu_status
+        table.insert(received_calls, opts and opts.menu_status or false)
         return { "Summary" }
       end,
     },
-    ["android.ui.hub"] = { open = function() end },
+    ["android.ui.hub"] = {
+      open = function()
+        return "handle"
+      end,
+      update = function(_, opts)
+        updated_opts = opts
+      end,
+    },
     ["android.ui.actions"] = { open = function() end },
     ["android.actions.context"] = {
       workspace = function()
@@ -129,10 +145,8 @@ local function main_menu_passes_menu_status_to_summary()
       end,
       start = function()
         return {
-          status = {
-            items = { { label = "Gradle tasks", value = "loading..." } },
-            run_snapshot = { list = {}, current = nil },
-          },
+          status = prefetch_status,
+          run_snapshot = { list = {}, current = nil },
           cancel = function() end,
         }
       end,
@@ -142,10 +156,29 @@ local function main_menu_passes_menu_status_to_summary()
   stubs_helper.with_stubs(stubs, function()
     package.loaded["android.ui.menu"] = nil
     local menu = require("android.ui.menu")
+    menu._schedule = function(fn)
+      scheduled_fn = fn
+    end
     menu.show_main_menu()
   end)
 
-  assert.eq(received and received.items[1] and received.items[1].label, "Gradle tasks", "menu_status")
+  -- initial call uses cached status (nil on cold start)
+  assert.eq(received_calls[1], false, "initial menu_status is nil")
+
+  -- run the deferred callback to simulate vim.schedule firing
+  stubs_helper.with_stubs(stubs, function()
+    if scheduled_fn then
+      scheduled_fn()
+    end
+  end)
+
+  -- deferred call passes real prefetch status to summary
+  local deferred = received_calls[2]
+  assert.eq(
+    deferred and deferred.items and deferred.items[1] and deferred.items[1].label,
+    "Gradle tasks",
+    "deferred menu_status"
+  )
 end
 
 function M.run()

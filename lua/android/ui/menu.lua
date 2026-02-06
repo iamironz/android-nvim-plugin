@@ -9,6 +9,8 @@ local menu_prefetch = require("android.state.menu_prefetch")
 
 local nav = { stack = {}, current = nil }
 
+M._schedule = vim.schedule
+
 local function update_summary(hub_opts, menu_status)
   if not hub_opts then
     return
@@ -64,18 +66,6 @@ local function ensure_prefetch(workspace)
   })
   nav.prefetch = { root = workspace.root, session = session }
   return session
-end
-
-local function resolve_menu_status(workspace)
-  if not workspace or not workspace.root then
-    return nil
-  end
-  local status = menu_prefetch.status(workspace.root)
-  if status then
-    return status
-  end
-  local session = ensure_prefetch(workspace)
-  return session and session.status or nil
 end
 
 local function apply_back_handler(hub_opts)
@@ -153,12 +143,13 @@ local function tools_search_title(blocks)
 end
 
 function M.show_main_menu()
-  local blocks = menu_items.top_level_blocks()
   local workspace = context.workspace()
-  local menu_status = resolve_menu_status(workspace)
+  local cached_status = workspace and menu_prefetch.status(workspace.root) or nil
+  local blocks = (menu_items.top_level_blocks_fast and menu_items.top_level_blocks_fast(workspace))
+    or menu_items.top_level_blocks(workspace)
   local summary_lines, refresh_summary = summary.lines({
     mode = "fast",
-    menu_status = menu_status,
+    menu_status = cached_status,
   })
   local hub_opts = {
     title = "Android Menu",
@@ -173,7 +164,7 @@ function M.show_main_menu()
     if not block then
       return
     end
-    local index = block_index(blocks, block)
+    local index = block_index(hub_opts.blocks, block)
     if index then
       hub_opts.initial_index = index
     end
@@ -190,13 +181,28 @@ function M.show_main_menu()
     end
     actions_picker.open({
       title = "Android Menu",
-      blocks = blocks,
+      blocks = hub_opts.blocks,
       default_query = char,
       on_cancel = reopen_hub,
     })
   end
 
   open_hub_with_nav(hub_opts, "root")
+
+  M._schedule(function()
+    if nav.current ~= hub_opts then
+      return
+    end
+    local session = workspace and ensure_prefetch(workspace) or nil
+    local run_snapshot = session and session.run_snapshot
+      or (menu_prefetch.cached_run_snapshot and menu_prefetch.cached_run_snapshot(workspace and workspace.root) or nil)
+    local new_blocks = menu_items.top_level_blocks(workspace, { run_snapshot = run_snapshot })
+    if nav.current ~= hub_opts then
+      return
+    end
+    hub_opts.blocks = new_blocks
+    update_summary(hub_opts, session and session.status or cached_status)
+  end)
 
   if refresh_summary then
     refresh_summary(function(updated)
@@ -209,10 +215,6 @@ function M.show_main_menu()
       end
     end)
   end
-
-  if workspace then
-    ensure_prefetch(workspace)
-  end
 end
 
 function M.show_targets_menu(opts)
@@ -222,10 +224,10 @@ function M.show_targets_menu(opts)
     return
   end
   local workspace = context.workspace()
-  local menu_status = resolve_menu_status(workspace)
+  local cached_status = workspace and menu_prefetch.status(workspace.root) or nil
   local hub_opts = {
     title = "Android Build Variants",
-    summary_lines = summary.lines({ mode = "fast", menu_status = menu_status }),
+    summary_lines = summary.lines({ mode = "fast", menu_status = cached_status }),
     blocks = { block },
   }
   if options.on_cancel then
@@ -280,10 +282,10 @@ function M.show_tools_menu(opts)
     return
   end
   local workspace = context.workspace()
-  local menu_status = resolve_menu_status(workspace)
+  local cached_status = workspace and menu_prefetch.status(workspace.root) or nil
   local hub_opts = {
     title = tools_search_title(blocks),
-    summary_lines = summary.lines({ mode = "fast", menu_status = menu_status }),
+    summary_lines = summary.lines({ mode = "fast", menu_status = cached_status }),
     blocks = blocks,
   }
   if options.on_cancel then
@@ -326,12 +328,13 @@ end
 
 function M.show_actions_menu(opts)
   local options = opts or {}
-  local blocks = menu_items.top_level_blocks()
   local workspace = context.workspace()
-  local menu_status = resolve_menu_status(workspace)
+  local cached_status = workspace and menu_prefetch.status(workspace.root) or nil
+  local blocks = (menu_items.top_level_blocks_fast and menu_items.top_level_blocks_fast(workspace))
+    or menu_items.top_level_blocks(workspace)
   local hub_opts = {
     title = "Android Actions",
-    summary_lines = summary.lines({ mode = "fast", menu_status = menu_status }),
+    summary_lines = summary.lines({ mode = "fast", menu_status = cached_status }),
     blocks = blocks,
   }
   if options.on_cancel then
@@ -347,7 +350,7 @@ function M.show_actions_menu(opts)
       return
     end
     local block_title = selected.title or "Actions"
-    local index = block_index(blocks, selected)
+    local index = block_index(hub_opts.blocks, selected)
     if index then
       hub_opts.initial_index = index
     end
@@ -363,13 +366,28 @@ function M.show_actions_menu(opts)
     end
     actions_picker.open({
       title = "Android Actions",
-      blocks = blocks,
+      blocks = hub_opts.blocks,
       default_query = char,
       on_cancel = reopen_hub,
     })
   end
 
   open_hub_with_nav(hub_opts, options.from_action and "child" or "root")
+
+  M._schedule(function()
+    if nav.current ~= hub_opts then
+      return
+    end
+    local session = workspace and ensure_prefetch(workspace) or nil
+    local run_snapshot = session and session.run_snapshot
+      or (menu_prefetch.cached_run_snapshot and menu_prefetch.cached_run_snapshot(workspace and workspace.root) or nil)
+    local new_blocks = menu_items.top_level_blocks(workspace, { run_snapshot = run_snapshot })
+    if nav.current ~= hub_opts then
+      return
+    end
+    hub_opts.blocks = new_blocks
+    update_summary(hub_opts, session and session.status or cached_status)
+  end)
 end
 
 return M

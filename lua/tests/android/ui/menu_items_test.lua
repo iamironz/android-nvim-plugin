@@ -355,6 +355,85 @@ local function hides_android_deploy_for_ios_target()
   assert.is_true(ids.build_default == true, "android build kept")
 end
 
+local function load_fast_blocks(workspace)
+  local blocks = nil
+  local stubs = {
+    ["android.actions.context"] = {
+      workspace = function()
+        return workspace
+      end,
+    },
+    ["android.run.registry"] = {
+      snapshot = function()
+        error("snapshot must not be called in fast path")
+      end,
+    },
+  }
+
+  stubs_helper.with_stubs(stubs, function()
+    package.loaded["android.ui.menu_items"] = nil
+    local items = require("android.ui.menu_items")
+    blocks = items.top_level_blocks_fast(workspace)
+  end)
+
+  return blocks or {}
+end
+
+local function fast_blocks_show_loading_configs()
+  local blocks = load_fast_blocks({
+    root = "/workspace",
+    gradle = { root = "/workspace" },
+    android = { root = "/workspace" },
+  })
+
+  local configs = find_block(blocks, "Run Configurations")
+  assert.is_true(configs ~= nil, "configs block present")
+  assert.eq(#configs.items, 1, "configs has loading placeholder")
+  assert.eq(configs.items[1].id, "_loading", "loading placeholder id")
+end
+
+local function fast_blocks_show_loading_run_label()
+  local blocks = load_fast_blocks({
+    root = "/workspace",
+    gradle = { root = "/workspace" },
+    android = { root = "/workspace" },
+  })
+
+  local run_block = find_block(blocks, "Run")
+  assert.is_true(run_block ~= nil, "run block present")
+  local label = ""
+  for _, item in ipairs(run_block.items or {}) do
+    if item.id == "run_current" then
+      label = item.label
+      break
+    end
+  end
+  assert.eq(label, "Run loading...", "fast run label")
+end
+
+local function fast_blocks_do_not_call_snapshot()
+  -- load_fast_blocks stubs snapshot to error; if this passes, snapshot was not called
+  local blocks = load_fast_blocks({
+    root = "/workspace",
+    gradle = { root = "/workspace" },
+    android = { root = "/workspace" },
+  })
+
+  local titles = block_titles(blocks)
+  assert.table_eq(
+    titles,
+    {
+      "Run Configurations",
+      "Run",
+      "Build Variants",
+      "Device Manager",
+      "ADB",
+      "Logcat",
+    },
+    "fast block titles"
+  )
+end
+
 function M.run()
   exposes_nested_sections()
   run_block_uses_resolved_label()
@@ -370,6 +449,9 @@ function M.run()
   includes_health_check_in_logs()
   hides_build_and_deploy_for_jvm_target()
   hides_android_deploy_for_ios_target()
+  fast_blocks_show_loading_configs()
+  fast_blocks_show_loading_run_label()
+  fast_blocks_do_not_call_snapshot()
 end
 
 return M
