@@ -7,6 +7,18 @@
 Neovim plugin for Android and mobile development workflows: build, run, logcat,
 device management, and Gradle tasks.
 
+I built this after one too many Android Studio updates traded stability for a
+fresh pile of features I did not ask for. Open a few projects and the laptop
+turns into a space heater while memory keeps climbing. Every release ships more
+panels and more prompts while the basics keep wobbling. Big tech loves the
+feature treadmill, even when it makes the IDE heavier than the app.
+
+Now that AI coding is everywhere, a full featured IDE feels like a spaceship
+for a grocery run, so I wanted something smaller and mine. This plugin keeps
+the essentials close and the workflow honest inside Neovim. It is also buggy
+and probably leaks memory in its own charming way. Think of it as a lighter
+bag of problems with a better keyboard.
+
 ![Android Neovim workflow demo](docs/images/android-nvim-plugin-demo.png)
 
 ## Compatibility
