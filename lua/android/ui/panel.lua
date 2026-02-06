@@ -12,6 +12,13 @@ local closing_group = false
 local body_name = nil
 local control_name = nil
 
+local function starts_with(value, prefix)
+  if type(value) ~= "string" then
+    return false
+  end
+  return value:sub(1, #prefix) == prefix
+end
+
 local function buffer_valid()
   return body_buf_id and vim.api.nvim_buf_is_valid(body_buf_id)
 end
@@ -85,6 +92,44 @@ local function close_window(win)
     return true
   end
   return false
+end
+
+local function panel_windows_in_current_tab()
+  if type(vim.api.nvim_tabpage_list_wins) ~= "function"
+    or type(vim.api.nvim_win_get_buf) ~= "function"
+    or type(vim.api.nvim_buf_get_name) ~= "function"
+  then
+    return {}
+  end
+
+  local ok_tab, tab = pcall(vim.api.nvim_get_current_tabpage)
+  if not ok_tab then
+    return {}
+  end
+  local ok_wins, wins = pcall(vim.api.nvim_tabpage_list_wins, tab)
+  if not ok_wins or type(wins) ~= "table" then
+    return {}
+  end
+
+  local result = {}
+  for _, win in ipairs(wins) do
+    if vim.api.nvim_win_is_valid(win) then
+      local ok_buf, buf = pcall(vim.api.nvim_win_get_buf, win)
+      if ok_buf and buf and vim.api.nvim_buf_is_valid(buf) then
+        local ok_name, name = pcall(vim.api.nvim_buf_get_name, buf)
+        if ok_name and starts_with(name, "android://") then
+          result[#result + 1] = win
+        end
+      end
+    end
+  end
+  return result
+end
+
+local function close_stale_panel_windows()
+  for _, win in ipairs(panel_windows_in_current_tab()) do
+    close_window(win)
+  end
 end
 
 local function apply_control_height(height)
@@ -210,6 +255,7 @@ local function open_dock(options)
 
   close_control_window()
   close_body_window()
+  close_stale_panel_windows()
 
   vim.cmd("botright split")
   body_win_id = vim.api.nvim_get_current_win()

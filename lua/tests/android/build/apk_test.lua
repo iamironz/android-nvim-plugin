@@ -237,6 +237,18 @@ local function bare_build_type_ignores_non_matching_dirs()
   assert.eq(result.ok, false, "no debug apks in release dirs")
 end
 
+local function bare_build_type_ignores_android_test_outputs()
+  local root = make_temp_dir()
+  local app_dir = make_apk_dir(root, ":app", "debug")
+  local android_test_dir = make_apk_dir(root, ":app", "androidTest/debug")
+  local deployable = make_apk(app_dir, "app-debug.apk", os.time() - 60)
+  make_apk(android_test_dir, "app-debug-androidTest.apk", os.time())
+
+  local result = apk.resolve_apk_path(root, ":app", "debug")
+  assert.is_true(result.ok, "resolve debug with androidTest outputs")
+  assert.eq(result.path, deployable, "resolve ignores androidTest apk")
+end
+
 local function lists_workspace_apks_across_modules()
   local root = make_temp_dir()
   local app_dir = make_apk_dir(root, ":app", "debug")
@@ -271,6 +283,7 @@ function M.run()
   resolves_bare_build_type_with_flavors()
   resolves_single_flavor_for_bare_build_type()
   bare_build_type_ignores_non_matching_dirs()
+  bare_build_type_ignores_android_test_outputs()
   lists_workspace_apks_across_modules()
 end
 

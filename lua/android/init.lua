@@ -1,5 +1,9 @@
 local M = {}
 M._schedule = vim.schedule
+M._did_enter = function()
+  local did_enter = vim.v and vim.v.vim_did_enter
+  return type(did_enter) == "number" and did_enter ~= 0
+end
 
 local command_definitions = {
   {
@@ -270,7 +274,8 @@ local function schedule_logcat_restore(workspace_root, ui_config)
   if not restore_logcat_enabled(ui_config) then
     return
   end
-  M._schedule(function()
+
+  local function restore()
     local state = load_restore_state(workspace_root)
     if not state then
       return
@@ -280,7 +285,19 @@ local function schedule_logcat_restore(workspace_root, ui_config)
       return
     end
     manager.restore_on_startup(workspace_root, { state = state })
-  end)
+  end
+
+  if not M._did_enter() and type(vim.api.nvim_create_autocmd) == "function" then
+    vim.api.nvim_create_autocmd("VimEnter", {
+      once = true,
+      callback = function()
+        M._schedule(restore)
+      end,
+    })
+    return
+  end
+
+  M._schedule(restore)
 end
 
 local function setup_workspace_features(config, deps)

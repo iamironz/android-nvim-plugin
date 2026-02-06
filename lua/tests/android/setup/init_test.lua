@@ -391,6 +391,9 @@ local function setup_restores_logcat_on_startup()
   }, function()
     package.loaded["android"] = nil
     local android = require("android")
+    android._did_enter = function()
+      return true
+    end
     android._schedule = function(fn)
       fn()
     end
@@ -446,6 +449,9 @@ local function setup_skips_logcat_restore_when_disabled()
   }, function()
     package.loaded["android"] = nil
     local android = require("android")
+    android._did_enter = function()
+      return true
+    end
     android._schedule = function(fn)
       fn()
     end

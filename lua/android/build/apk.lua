@@ -23,6 +23,26 @@ local function is_file(path)
   return stat ~= nil and stat.type == "file"
 end
 
+local function is_android_test_apk(path)
+  if not path or path == "" then
+    return false
+  end
+  if path:find("/androidTest/", 1, true) then
+    return true
+  end
+  return path:match("%-androidTest%.apk$") ~= nil
+end
+
+local function collect_deployable_apks(paths)
+  local filtered = {}
+  for _, path in ipairs(paths or {}) do
+    if not is_android_test_apk(path) then
+      filtered[#filtered + 1] = path
+    end
+  end
+  return filtered
+end
+
 local function list_apks(path)
   local handle = vim.loop.fs_scandir(path)
   if not handle then
@@ -96,7 +116,7 @@ local function scan_flavor_dirs(base, build_type)
     if not name then
       break
     end
-    if entry_type == "directory" and name ~= build_type then
+    if entry_type == "directory" and name ~= build_type and name ~= "androidTest" then
       local candidate = base .. "/" .. name .. "/" .. build_type
       if is_dir(candidate) then
         dirs[#dirs + 1] = candidate
@@ -226,7 +246,9 @@ function M.list_apk_paths(root, module, variant, opts)
   for _, dir in ipairs(variant_dirs(base, variant)) do
     if is_dir(dir) then
       for _, path in ipairs(list_apks(dir)) do
-        table.insert(apks, path)
+        if not is_android_test_apk(path) then
+          table.insert(apks, path)
+        end
       end
     end
   end
@@ -240,7 +262,10 @@ function M.list_apk_paths(root, module, variant, opts)
     if scan_all then
       local fallback = M.list_module_apks(root, module)
       if fallback.ok then
-        return fallback
+        local fallback_apks = collect_deployable_apks(fallback.apks)
+        if #fallback_apks > 0 then
+          return { ok = true, apks = fallback_apks }
+        end
       end
     end
     return { ok = false, error = "no apk found for variant " .. variant }

@@ -96,6 +96,34 @@ local function open_dock_preserve_focus_keeps_origin_window_selected()
   )
 end
 
+local function open_dock_closes_stale_android_windows_before_creating_new_pair()
+  panel_vim.with_panel_module({ on_cmd = panel_vim.on_split_create_window }, function(panel, api_state)
+    local stale_body_buf = api_state.next_buf_id
+    api_state.next_buf_id = api_state.next_buf_id + 1
+    api_state.buffers[stale_body_buf] = { lines = {} }
+    api_state.buf_names[stale_body_buf] = "android://logcat stale"
+
+    local stale_control_buf = api_state.next_buf_id
+    api_state.next_buf_id = api_state.next_buf_id + 1
+    api_state.buffers[stale_control_buf] = { lines = {} }
+    api_state.buf_names[stale_control_buf] = "android://logcat-controls stale"
+
+    local stale_body_win = 701
+    local stale_control_win = 702
+    api_state.windows[stale_body_win] = stale_body_buf
+    api_state.windows[stale_control_win] = stale_control_buf
+    api_state.valid_wins[stale_body_win] = true
+    api_state.valid_wins[stale_control_win] = true
+    api_state.win_tabs[stale_body_win] = api_state.current_tab
+    api_state.win_tabs[stale_control_win] = api_state.current_tab
+
+    panel.open({ layout = "dock", control_height = 1 })
+
+    assert.eq(api_state.valid_wins[stale_body_win], nil, "stale body closed")
+    assert.eq(api_state.valid_wins[stale_control_win], nil, "stale control closed")
+  end)
+end
+
 local function close_returns_true_and_closes_window_after_open()
   with_panel_api(function(panel, api_state)
     with_open_panel(panel, api_state)
@@ -180,6 +208,7 @@ function M.run()
   open_sets_winfixbuf_for_inline_window()
   open_dock_sets_winfixbuf_for_body_and_control_windows()
   open_dock_preserve_focus_keeps_origin_window_selected()
+  open_dock_closes_stale_android_windows_before_creating_new_pair()
   append_adds_lines_to_open_buffer()
   clear_removes_all_lines_from_open_buffer()
   set_header_lines_prepends_header_to_existing_body()

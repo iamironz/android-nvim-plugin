@@ -83,14 +83,31 @@ local function cache_valid(cache, path)
   return current_sig == cache.settings_sig
 end
 
+local function detect_workspace(path)
+  local detected = project.detect(path)
+  if detected and detected.gradle then
+    return detected
+  end
+
+  local cwd = vim.fn.getcwd()
+  if cwd and cwd ~= "" and cwd ~= path then
+    local cwd_detected = project.detect(cwd)
+    if cwd_detected and cwd_detected.gradle then
+      return cwd_detected
+    end
+  end
+
+  return nil
+end
+
 function M.workspace()
   local path = current_path()
   if cache_valid(workspace_cache, path) then
     return workspace_cache.workspace
   end
 
-  local detected = project.detect(path)
-  if not detected or not detected.gradle then
+  local detected = detect_workspace(path)
+  if not detected then
     vim.notify("Android workspace not found", vim.log.levels.WARN)
     workspace_cache = nil
     return nil

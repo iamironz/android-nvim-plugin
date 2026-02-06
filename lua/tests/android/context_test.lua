@@ -129,11 +129,70 @@ local function bypasses_cache_when_path_outside_root()
   end)
 end
 
+local function falls_back_to_cwd_when_buffer_outside_workspace()
+  local save, restore = create_saver()
+  local detect_calls = {}
+  local notifications = {}
+
+  save(vim.api, "nvim_buf_get_name")
+  vim.api.nvim_buf_get_name = function()
+    return "/outside/file.txt"
+  end
+
+  save(vim.fn, "getcwd")
+  vim.fn.getcwd = function()
+    return "/repo"
+  end
+
+  save(vim.loop, "fs_stat")
+  vim.loop.fs_stat = function(path)
+    if path == "/repo/settings.gradle" then
+      return {
+        type = "file",
+        size = 10,
+        mtime = { sec = 1, nsec = 0 },
+      }
+    end
+    return nil
+  end
+
+  save(vim, "notify")
+  vim.notify = function(message, level)
+    notifications[#notifications + 1] = { message = message, level = level }
+  end
+
+  stubs.with_stubs({
+    ["android.project.detect"] = {
+      detect = function(path)
+        detect_calls[#detect_calls + 1] = path
+        if path == "/outside/file.txt" then
+          return nil
+        end
+        if path == "/repo" then
+          return { root = "/repo", gradle = { root = "/repo" } }
+        end
+        return nil
+      end,
+    },
+  }, function()
+    local context = load_context()
+    local workspace = context.workspace()
+
+    assert.eq(workspace and workspace.root, "/repo", "cwd workspace fallback")
+    assert.eq(detect_calls[1], "/outside/file.txt", "first detect uses buffer path")
+    assert.eq(detect_calls[2], "/repo", "second detect uses cwd")
+    assert.eq(#notifications, 0, "no workspace warning when cwd fallback succeeds")
+  end)
+
+  restore()
+end
+
 function M.run()
   caches_workspace_on_repeated_calls()
   invalidates_cache_on_settings_change()
   skips_cache_when_settings_missing()
   bypasses_cache_when_path_outside_root()
+  falls_back_to_cwd_when_buffer_outside_workspace()
 end
 
 return M

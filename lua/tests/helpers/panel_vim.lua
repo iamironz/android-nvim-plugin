@@ -136,6 +136,10 @@ local function add_buffer_api(state, mock_api)
     state.buf_names[buf] = name
   end)
 
+  mock_api("nvim_buf_get_name", function(buf)
+    return state.buf_names[buf] or ""
+  end)
+
   mock_api("nvim_buf_is_valid", function(buf)
     return state.buffers[buf] ~= nil
   end)
@@ -164,6 +168,10 @@ local function add_window_api(state, mock_api)
     state.win_tabs[win] = state.win_tabs[win] or state.current_tab
   end)
 
+  mock_api("nvim_win_get_buf", function(win)
+    return state.windows[win]
+  end)
+
   mock_api("nvim_win_close", function(win)
     state.windows[win] = nil
     state.valid_wins[win] = nil
@@ -190,6 +198,17 @@ end
 local function add_tab_and_group_api(state, mock_api)
   mock_api("nvim_get_current_tabpage", function()
     return state.current_tab
+  end)
+
+  mock_api("nvim_tabpage_list_wins", function(tab)
+    local wins = {}
+    for win, valid in pairs(state.valid_wins) do
+      if valid and (state.win_tabs[win] or state.current_tab) == tab then
+        wins[#wins + 1] = win
+      end
+    end
+    table.sort(wins)
+    return wins
   end)
 
   mock_api("nvim_win_get_tabpage", function(win)
