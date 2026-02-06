@@ -28,9 +28,12 @@ function M.select_module(modules)
   return modules[1]
 end
 
-function M.select_variant(variants)
+function M.select_variant(variants, default_hint)
   if not variants or #variants == 0 then
-    return nil
+    return default_hint
+  end
+  if default_hint and default_hint ~= "" and contains(variants, default_hint) then
+    return default_hint
   end
   if contains(variants, "debug") then
     return "debug"

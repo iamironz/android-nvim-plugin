@@ -85,6 +85,27 @@ local function sort_by_mtime(paths)
   return paths
 end
 
+local function scan_flavor_dirs(base, build_type)
+  local handle = vim.loop.fs_scandir(base)
+  if not handle then
+    return {}
+  end
+  local dirs = {}
+  while true do
+    local name, entry_type = vim.loop.fs_scandir_next(handle)
+    if not name then
+      break
+    end
+    if entry_type == "directory" and name ~= build_type then
+      local candidate = base .. "/" .. name .. "/" .. build_type
+      if is_dir(candidate) then
+        dirs[#dirs + 1] = candidate
+      end
+    end
+  end
+  return dirs
+end
+
 local function variant_dirs(base, variant)
   if not variant or variant == "" then
     return {}
@@ -101,6 +122,16 @@ local function variant_dirs(base, variant)
     )
     table.insert(dirs, path)
   end
+
+  -- bare build type (e.g. "debug") with product flavors:
+  -- APKs live in <base>/<flavor>/<buildType>/ instead of <base>/<buildType>/
+  if not flavor or flavor == "" then
+    local flavor_candidates = scan_flavor_dirs(base, variant)
+    for _, dir in ipairs(flavor_candidates) do
+      dirs[#dirs + 1] = dir
+    end
+  end
+
   return dirs
 end
 

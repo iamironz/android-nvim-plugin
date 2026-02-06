@@ -206,6 +206,37 @@ local function lists_module_apks_recursively()
   assert.table_eq(result.apks, { newer, older }, "module apks")
 end
 
+local function resolves_bare_build_type_with_flavors()
+  local root = make_temp_dir()
+  local internal_dir = make_apk_dir(root, ":app", "internal/debug")
+  local external_dir = make_apk_dir(root, ":app", "external/debug")
+  local internal_apk = make_apk(internal_dir, "app-internal-debug.apk", os.time())
+  local external_apk = make_apk(external_dir, "app-external-debug.apk", os.time() - 30)
+
+  local result = apk.list_apk_paths(root, ":app", "debug")
+  assert.is_true(result.ok, "bare debug with flavors ok")
+  assert.eq(#result.apks, 2, "bare debug with flavors count")
+end
+
+local function resolves_single_flavor_for_bare_build_type()
+  local root = make_temp_dir()
+  local dir = make_apk_dir(root, ":app", "internal/debug")
+  local target = make_apk(dir, "app-internal-debug.apk", os.time())
+
+  local result = apk.resolve_apk_path(root, ":app", "debug")
+  assert.is_true(result.ok, "single flavor resolve ok")
+  assert.eq(result.path, target, "single flavor resolve path")
+end
+
+local function bare_build_type_ignores_non_matching_dirs()
+  local root = make_temp_dir()
+  local release_dir = make_apk_dir(root, ":app", "internal/release")
+  make_apk(release_dir, "app-internal-release.apk", os.time())
+
+  local result = apk.list_apk_paths(root, ":app", "debug")
+  assert.eq(result.ok, false, "no debug apks in release dirs")
+end
+
 local function lists_workspace_apks_across_modules()
   local root = make_temp_dir()
   local app_dir = make_apk_dir(root, ":app", "debug")
@@ -237,6 +268,9 @@ function M.run()
   resolves_relative_override_path()
   returns_error_when_override_missing()
   lists_module_apks_recursively()
+  resolves_bare_build_type_with_flavors()
+  resolves_single_flavor_for_bare_build_type()
+  bare_build_type_ignores_non_matching_dirs()
   lists_workspace_apks_across_modules()
 end
 
