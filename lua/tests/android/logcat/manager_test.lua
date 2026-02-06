@@ -178,9 +178,70 @@ local function open_uses_dock_panel_layout()
   end)
 end
 
+local function open_sets_restore_on_startup_flag()
+  manager_context({ state = { logcat = {} } }, function(ctx)
+    ctx.manager.open()
+    assert.eq(ctx.state.logcat.restore_on_startup, true, "restore flag set")
+  end)
+end
+
+local function open_uses_saved_run_config_without_resolve()
+  manager_context({
+    state = {
+      run = { config_id = "android" },
+      logcat = {},
+    },
+  }, function(ctx)
+    ctx.manager.open()
+    assert.eq(ctx.registry_calls.resolve, 0, "resolve skipped")
+  end)
+end
+
+local function closing_panel_clears_restore_on_startup_flag()
+  manager_context({ state = { logcat = {} } }, function(ctx)
+    ctx.manager.open()
+    assert.eq(ctx.state.logcat.restore_on_startup, true, "restore flag set")
+    ctx.vim_state.keymaps["n"]["q"]()
+    assert.eq(ctx.state.logcat.restore_on_startup, false, "restore flag cleared")
+  end)
+end
+
+local function restore_on_startup_opens_logcat_when_enabled()
+  manager_context({
+    state = {
+      logcat = {
+        restore_on_startup = true,
+      },
+    },
+  }, function(ctx)
+    local restored = ctx.manager.restore_on_startup("/workspace")
+    assert.eq(restored, true, "restored")
+    assert.eq(ctx.spawn_calls.count, 1, "logcat started")
+  end)
+end
+
+local function restore_on_startup_skips_when_disabled()
+  manager_context({
+    state = {
+      logcat = {
+        restore_on_startup = false,
+      },
+    },
+  }, function(ctx)
+    local restored = ctx.manager.restore_on_startup("/workspace")
+    assert.eq(restored, false, "skipped")
+    assert.eq(ctx.spawn_calls.count, 0, "logcat not started")
+  end)
+end
+
 function M.run()
   switcher_preserves_session_body_and_header()
   open_uses_dock_panel_layout()
+  open_sets_restore_on_startup_flag()
+  open_uses_saved_run_config_without_resolve()
+  closing_panel_clears_restore_on_startup_flag()
+  restore_on_startup_opens_logcat_when_enabled()
+  restore_on_startup_skips_when_disabled()
 end
 
 return M

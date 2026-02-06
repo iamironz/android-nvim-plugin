@@ -34,6 +34,7 @@ require("android").setup({
   ui = {
     file_watcher = true,
     autosave = true,
+    restore_logcat = true,
   },
   keymaps = {
     enabled = true,
@@ -75,6 +76,7 @@ require("android").setup({
 
 - `file_watcher` (boolean): enable workspace file watcher.
 - `autosave` (boolean): auto-save files before actions.
+- `restore_logcat` (boolean): reopen logcat dock on startup when it was left open.
 
 ### keymaps
 

@@ -1,6 +1,34 @@
 local M = {}
 
 local path = require("android.state.path")
+local cache_by_file = {}
+
+local function deep_copy(value, seen)
+  if type(value) ~= "table" then
+    return value
+  end
+  local tracked = seen or {}
+  if tracked[value] then
+    return tracked[value]
+  end
+  local copy = {}
+  tracked[value] = copy
+  for key, nested in pairs(value) do
+    copy[deep_copy(key, tracked)] = deep_copy(nested, tracked)
+  end
+  return copy
+end
+
+local function file_stamp(file_path)
+  local stat = vim.loop.fs_stat(file_path)
+  if not stat or not stat.mtime then
+    return "missing"
+  end
+  local sec = stat.mtime.sec or 0
+  local nsec = stat.mtime.nsec or 0
+  local size = stat.size or 0
+  return string.format("%d:%d:%d", sec, nsec, size)
+end
 
 local function read_file(file_path)
   local ok, lines = pcall(vim.fn.readfile, file_path)
@@ -37,9 +65,20 @@ function M.load(opts)
   if not file_path then
     return {}
   end
+  local stamp = file_stamp(file_path)
+  local cached = cache_by_file[file_path]
+  if cached and cached.stamp == stamp then
+    return deep_copy(cached.state or {})
+  end
 
   local payload = read_file(file_path)
-  return decode_json(payload)
+  local state = decode_json(payload)
+  cache_by_file[file_path] = {
+    stamp = stamp,
+    payload = payload or "",
+    state = deep_copy(state),
+  }
+  return state
 end
 
 function M.save(opts, state)
@@ -57,8 +96,17 @@ function M.save(opts, state)
   if not payload then
     return false
   end
+  local cached = cache_by_file[file_path]
+  if cached and cached.payload == payload then
+    return true
+  end
   local lines = vim.split(payload, "\n", { plain = true })
   vim.fn.writefile(lines, file_path)
+  cache_by_file[file_path] = {
+    stamp = file_stamp(file_path),
+    payload = payload,
+    state = deep_copy(state or {}),
+  }
   return true
 end
 

@@ -14,6 +14,48 @@ local sessions = {}
 local active_config_id = nil
 local DEFAULT_CONTROL_HEIGHT = 3
 
+local function workspace_root_from_sessions()
+  for _, session in pairs(sessions) do
+    if session and type(session.root) == "string" and session.root ~= "" then
+      return session.root
+    end
+  end
+  return nil
+end
+
+local function is_exiting()
+  local exiting = vim.v and vim.v.exiting
+  return type(exiting) == "number" and exiting ~= 0
+end
+
+local function set_restore_on_startup(workspace_root, state, enabled)
+  if not workspace_root or workspace_root == "" then
+    return state
+  end
+  local next_state = state or context.load_state(workspace_root) or {}
+  next_state.logcat = next_state.logcat or {}
+  if next_state.logcat.restore_on_startup == enabled then
+    return next_state
+  end
+  next_state.logcat.restore_on_startup = enabled
+  context.save_state(workspace_root, next_state)
+  return next_state
+end
+
+local function state_config_id(state)
+  local run_state = state and state.run or nil
+  local config_id = run_state and run_state.config_id or nil
+  if type(config_id) == "string" and config_id ~= "" then
+    return config_id
+  end
+  return nil
+end
+
+local function restore_on_startup_enabled(state)
+  local logcat_state = state and state.logcat or nil
+  return logcat_state and logcat_state.restore_on_startup == true
+end
+
 local function resolve_logcat_state(state, config_id)
   local next_state = state or {}
   next_state.logcat = next_state.logcat or {}
@@ -43,7 +85,8 @@ local function resolve_logcat_state(state, config_id)
   }, next_state
 end
 
-local function persist_logcat_state(root, state, config_id, updates)
+local function persist_logcat_state(root, state, config_id, updates, opts)
+  local options = opts or {}
   local next_state = state or {}
   next_state.logcat = next_state.logcat or {}
   local sessions_state = next_state.logcat.sessions or {}
@@ -54,7 +97,11 @@ local function persist_logcat_state(root, state, config_id, updates)
       entry[key] = value
       changed = true
     end
-    if key == "package" or key == "filter" or key == "filter_history" or key == "level" or key == "serial" then
+    if key == "package"
+        or key == "filter"
+        or key == "filter_history"
+        or key == "level"
+        or key == "serial" then
       if next_state.logcat[key] ~= value then
         next_state.logcat[key] = value
         changed = true
@@ -65,7 +112,7 @@ local function persist_logcat_state(root, state, config_id, updates)
     sessions_state[config_id] = entry
     next_state.logcat.sessions = sessions_state
   end
-  if changed then
+  if changed and options.persist ~= false then
     context.save_state(root, next_state)
   end
   return next_state
@@ -75,6 +122,10 @@ local function stop_all_sessions()
   for _, session in pairs(sessions) do
     session_module.stop(session)
   end
+  if is_exiting() then
+    return
+  end
+  set_restore_on_startup(workspace_root_from_sessions(), nil, false)
 end
 
 local function close_panel()
@@ -126,8 +177,14 @@ local function configure_session(session, workspace, state, origin_win, config_i
   end
   local filter_text = saved.filter or ""
   local level = saved.level or ""
-  session.persist_state = function(updates)
-    session.state = persist_logcat_state(session.root, session.state, config_id, updates)
+  session.persist_state = function(updates, persist_opts)
+    session.state = persist_logcat_state(
+      session.root,
+      session.state,
+      config_id,
+      updates,
+      persist_opts
+    )
   end
   session_module.configure(session, {
     root = workspace.root,
@@ -214,30 +271,58 @@ function M.activate(config_id, origin_win)
   if not workspace then
     return
   end
-  local handle = panel.handle and panel.handle() or nil
   local state = context.load_state(workspace.root)
+  state = set_restore_on_startup(workspace.root, state, true)
+  local handle = panel.handle and panel.handle() or nil
   local current_win = handle and handle.win or vim.api.nvim_get_current_win()
   local session = ensure_session(workspace, config_id, origin_win or current_win, state, handle)
   activate_session(session)
   session_module.ensure_started(session, { preserve_body = true })
 end
 
-function M.open()
-  local workspace = context.workspace()
+function M.open(opts)
+  local options = opts or {}
+  local workspace = options.workspace or context.workspace()
   if not workspace then
     return
   end
-  local origin_win = vim.api.nvim_get_current_win()
-  local handle = panel.open({
+  local origin_win = options.origin_win or vim.api.nvim_get_current_win()
+  local handle = options.panel_handle or panel.open({
     layout = "dock",
     control_height = DEFAULT_CONTROL_HEIGHT,
   })
-  local state = context.load_state(workspace.root)
-  local config = run_registry.resolve(workspace)
-  local config_id = (config and config.id) or "default"
+  local state = options.state or context.load_state(workspace.root)
+  state = set_restore_on_startup(workspace.root, state, true)
+  local config_id = options.config_id or state_config_id(state)
+  if not config_id then
+    local config = run_registry.resolve(workspace)
+    config_id = (config and config.id) or "default"
+  end
   local session = ensure_session(workspace, config_id, origin_win, state, handle)
   activate_session(session)
   session_module.ensure_started(session, { preserve_body = session.logcat_job ~= nil })
+end
+
+function M.should_restore_on_startup(workspace_root, state)
+  if not workspace_root or workspace_root == "" then
+    return false
+  end
+  local next_state = state or context.load_state(workspace_root) or {}
+  return restore_on_startup_enabled(next_state)
+end
+
+function M.restore_on_startup(workspace_root, opts)
+  local options = opts or {}
+  local state = options.state or context.load_state(workspace_root) or {}
+  if not M.should_restore_on_startup(workspace_root, state) then
+    return false
+  end
+  M.open({
+    workspace = options.workspace,
+    state = state,
+    config_id = state_config_id(state),
+  })
+  return true
 end
 
 return M

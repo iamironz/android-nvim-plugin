@@ -49,6 +49,7 @@ local function clear_prefetch()
 end
 
 local function reset_nav_state()
+  clear_prefetch()
   nav.stack = {}
   nav.current = nil
 end

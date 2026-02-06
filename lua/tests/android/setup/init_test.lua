@@ -38,8 +38,32 @@ local function find_map(calls, lhs)
   return nil
 end
 
+local function logcat_manager_stub(calls)
+  return {
+    restore_on_startup = function(workspace_root)
+      if calls then
+        calls.restore_logcat = (calls.restore_logcat or 0) + 1
+        calls.restore_root = workspace_root
+      end
+    end,
+  }
+end
+
+local function selection_store_stub(state)
+  local current = state or {}
+  return {
+    load = function()
+      return current
+    end,
+    save = function(_, next_state)
+      current = next_state or {}
+      return true
+    end,
+  }
+end
+
 local function setup_calls_autosave_and_file_watcher()
-  local calls = { autosave = 0, file_watcher = 0 }
+  local calls = { autosave = 0, file_watcher = 0, restore_logcat = 0 }
   local save, restore = create_saver()
 
   save(vim.api, "nvim_create_user_command")
@@ -72,6 +96,8 @@ local function setup_calls_autosave_and_file_watcher()
     ["android.actions.build"] = {
       build_default = function() end,
     },
+    ["android.state.selection_store"] = selection_store_stub(),
+    ["android.logcat.manager"] = logcat_manager_stub(calls),
   }, function()
     package.loaded["android"] = nil
     require("android").setup()
@@ -81,6 +107,7 @@ local function setup_calls_autosave_and_file_watcher()
 
   assert.eq(calls.autosave, 1, "autosave setup called")
   assert.eq(calls.file_watcher, 1, "file watcher setup called")
+  assert.eq(calls.restore_logcat, 0, "logcat restore skipped without state flag")
 end
 
 local function setup_passes_workspace_root_to_file_watcher()
@@ -121,6 +148,8 @@ local function setup_passes_workspace_root_to_file_watcher()
     ["android.actions.build"] = {
       build_default = function() end,
     },
+    ["android.state.selection_store"] = selection_store_stub(),
+    ["android.logcat.manager"] = logcat_manager_stub(),
   }, function()
     package.loaded["android"] = nil
     require("android").setup()
@@ -165,6 +194,8 @@ local function setup_skips_autosave_when_disabled()
     ["android.actions.build"] = {
       build_default = function() end,
     },
+    ["android.state.selection_store"] = selection_store_stub(),
+    ["android.logcat.manager"] = logcat_manager_stub(),
   }, function()
     package.loaded["android"] = nil
     require("android").setup({ ui = { autosave = false } })
@@ -210,6 +241,8 @@ local function setup_handles_non_table_ui_config()
     ["android.actions.build"] = {
       build_default = function() end,
     },
+    ["android.state.selection_store"] = selection_store_stub(),
+    ["android.logcat.manager"] = logcat_manager_stub(),
   }, function()
     package.loaded["android"] = nil
     require("android").setup({ ui = false })
@@ -255,6 +288,8 @@ local function setup_skips_file_watcher_when_disabled()
     ["android.actions.build"] = {
       build_default = function() end,
     },
+    ["android.state.selection_store"] = selection_store_stub(),
+    ["android.logcat.manager"] = logcat_manager_stub(),
   }, function()
     package.loaded["android"] = nil
     require("android").setup({ ui = { file_watcher = false } })
@@ -300,6 +335,8 @@ local function setup_skips_autosave_when_no_workspace()
     ["android.actions.build"] = {
       build_default = function() end,
     },
+    ["android.state.selection_store"] = selection_store_stub(),
+    ["android.logcat.manager"] = logcat_manager_stub(),
   }, function()
     package.loaded["android"] = nil
     require("android").setup()
@@ -309,6 +346,115 @@ local function setup_skips_autosave_when_no_workspace()
 
   assert.eq(calls.autosave, 0, "autosave setup skipped")
   assert.eq(calls.file_watcher, 0, "file watcher setup skipped")
+end
+
+local function setup_restores_logcat_on_startup()
+  local calls = { restore_logcat = 0, restore_root = nil }
+  local save, restore = create_saver()
+
+  save(vim.api, "nvim_create_user_command")
+  save(vim.keymap, "set")
+  vim.api.nvim_create_user_command = function()
+    return nil
+  end
+  vim.keymap.set = function() end
+
+  stubs.with_stubs({
+    ["android.project.detect"] = {
+      detect = function()
+        return { root = "/workspace", gradle = { root = "/workspace" } }
+      end,
+    },
+    ["android.ui.autosave"] = {
+      setup = function() end,
+    },
+    ["android.ui.file_watcher"] = {
+      setup = function() end,
+    },
+    ["android.ui.menu"] = {
+      show_main_menu = function() end,
+      show_targets_menu = function() end,
+      show_tools_menu = function() end,
+    },
+    ["android.ui.actions"] = {
+      open = function() end,
+    },
+    ["android.actions.build"] = {
+      build_default = function() end,
+    },
+    ["android.state.selection_store"] = selection_store_stub({
+      logcat = {
+        restore_on_startup = true,
+      },
+    }),
+    ["android.logcat.manager"] = logcat_manager_stub(calls),
+  }, function()
+    package.loaded["android"] = nil
+    local android = require("android")
+    android._schedule = function(fn)
+      fn()
+    end
+    android.setup()
+  end)
+
+  restore()
+
+  assert.eq(calls.restore_logcat, 1, "logcat restore called")
+  assert.eq(calls.restore_root, "/workspace", "logcat restore workspace")
+end
+
+local function setup_skips_logcat_restore_when_disabled()
+  local calls = { restore_logcat = 0, restore_root = nil }
+  local save, restore = create_saver()
+
+  save(vim.api, "nvim_create_user_command")
+  save(vim.keymap, "set")
+  vim.api.nvim_create_user_command = function()
+    return nil
+  end
+  vim.keymap.set = function() end
+
+  stubs.with_stubs({
+    ["android.project.detect"] = {
+      detect = function()
+        return { root = "/workspace", gradle = { root = "/workspace" } }
+      end,
+    },
+    ["android.ui.autosave"] = {
+      setup = function() end,
+    },
+    ["android.ui.file_watcher"] = {
+      setup = function() end,
+    },
+    ["android.ui.menu"] = {
+      show_main_menu = function() end,
+      show_targets_menu = function() end,
+      show_tools_menu = function() end,
+    },
+    ["android.ui.actions"] = {
+      open = function() end,
+    },
+    ["android.actions.build"] = {
+      build_default = function() end,
+    },
+    ["android.state.selection_store"] = selection_store_stub({
+      logcat = {
+        restore_on_startup = false,
+      },
+    }),
+    ["android.logcat.manager"] = logcat_manager_stub(calls),
+  }, function()
+    package.loaded["android"] = nil
+    local android = require("android")
+    android._schedule = function(fn)
+      fn()
+    end
+    android.setup({ ui = { restore_logcat = false } })
+  end)
+
+  restore()
+
+  assert.eq(calls.restore_logcat, 0, "logcat restore skipped")
 end
 
 local function setup_registers_keymaps()
@@ -347,6 +493,8 @@ local function setup_registers_keymaps()
     ["android.actions.build"] = {
       build_default = function() end,
     },
+    ["android.state.selection_store"] = selection_store_stub(),
+    ["android.logcat.manager"] = logcat_manager_stub(),
   }, function()
     package.loaded["android"] = nil
     require("android").setup()
@@ -392,8 +540,10 @@ function M.run()
   setup_skips_autosave_when_disabled()
   setup_handles_non_table_ui_config()
   setup_skips_file_watcher_when_disabled()
-  setup_registers_keymaps()
   setup_skips_autosave_when_no_workspace()
+  setup_restores_logcat_on_startup()
+  setup_skips_logcat_restore_when_disabled()
+  setup_registers_keymaps()
 end
 
 return M

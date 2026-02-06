@@ -46,7 +46,8 @@ local function update_level(session, value, deps)
   deps.restart_logcat(session)
 end
 
-local function update_filter(session, value, deps)
+local function update_filter(session, value, deps, opts)
+  local options = opts or {}
   local next_filter = normalize_input(value)
   if next_filter == session.filter then
     return
@@ -54,7 +55,7 @@ local function update_filter(session, value, deps)
   session.filter = next_filter
   session.filter_terms = filters().parse_terms(next_filter)
   if session.persist_state then
-    session.persist_state({ filter = next_filter })
+    session.persist_state({ filter = next_filter }, { persist = options.persist ~= false })
   end
   session.body_lines = filters().filter_lines(session.raw_lines or {}, session.filter)
   if output().should_trim(session) then
@@ -80,7 +81,10 @@ local function persist_filter_history(session, value)
   local next_history = history().push(session.filter_history, value, { limit = 20 })
   session.filter_history = next_history
   if session.persist_state then
-    session.persist_state({ filter_history = next_history })
+    session.persist_state({
+      filter = session.filter,
+      filter_history = next_history,
+    })
   end
 end
 
@@ -89,7 +93,9 @@ local function start_filter_edit(session, deps)
     prompt_title = "Logcat filter",
     items = session.filter_history or {},
     default = session.filter,
-    on_change = function(value) update_filter(session, value, deps) end,
+    on_change = function(value)
+      update_filter(session, value, deps, { persist = false })
+    end,
     on_accept = function(value)
       update_filter(session, value, deps)
       persist_filter_history(session, value)

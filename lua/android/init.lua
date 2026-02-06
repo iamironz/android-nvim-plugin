@@ -1,4 +1,5 @@
 local M = {}
+M._schedule = vim.schedule
 
 local keymap_definitions = {
   menu = {
@@ -91,22 +92,76 @@ local function resolve_start_path()
 end
 
 local function resolve_workspace_root()
-  local ok, project = pcall(require, "android.project.detect")
-  if not ok or not project then
+  local start_path = resolve_start_path()
+
+  local ok_workspace, gradle_workspace = pcall(require, "android.gradle.workspace")
+  if ok_workspace and gradle_workspace and type(gradle_workspace.find_root) == "function" then
+    local root = gradle_workspace.find_root(start_path)
+    if type(root) == "string" and root ~= "" then
+      return root
+    end
+  end
+
+  -- Fallback keeps older behavior if fast root lookup is unavailable.
+  local ok_project, project = pcall(require, "android.project.detect")
+  if not ok_project or not project or type(project.detect) ~= "function" then
     return nil
   end
-  local detected = project.detect(resolve_start_path())
-  if not detected or detected.gradle == nil then
+  local detected = project.detect(start_path)
+  if not detected then
     return nil
   end
   if type(detected.root) == "string" and detected.root ~= "" then
     return detected.root
   end
-  local gradle_root = detected.gradle.root
-  if type(gradle_root) == "string" and gradle_root ~= "" then
-    return gradle_root
+  local gradle = detected.gradle or {}
+  if type(gradle.root) == "string" and gradle.root ~= "" then
+    return gradle.root
   end
   return nil
+end
+
+local function restore_logcat_enabled(ui_config)
+  if ui_config == nil then
+    return true
+  end
+  return ui_config.restore_logcat ~= false
+end
+
+local function load_restore_state(workspace_root)
+  if not workspace_root or workspace_root == "" then
+    return nil
+  end
+  local ok, selection_store = pcall(require, "android.state.selection_store")
+  if not ok or not selection_store or type(selection_store.load) ~= "function" then
+    return nil
+  end
+  local state = selection_store.load({ workspace_root = workspace_root }) or {}
+  local logcat_state = state.logcat or {}
+  if logcat_state.restore_on_startup ~= true then
+    return nil
+  end
+  return state
+end
+
+local function schedule_logcat_restore(workspace_root, ui_config)
+  if not workspace_root or workspace_root == "" then
+    return
+  end
+  if not restore_logcat_enabled(ui_config) then
+    return
+  end
+  M._schedule(function()
+    local state = load_restore_state(workspace_root)
+    if not state then
+      return
+    end
+    local ok, manager = pcall(require, "android.logcat.manager")
+    if not ok or not manager or type(manager.restore_on_startup) ~= "function" then
+      return
+    end
+    manager.restore_on_startup(workspace_root, { state = state })
+  end)
 end
 
 function M.setup(opts)
@@ -129,6 +184,7 @@ function M.setup(opts)
       file_watcher.setup({ workspace_root = workspace_root })
     end
   end
+  schedule_logcat_restore(workspace_root, ui_config)
 
   vim.api.nvim_create_user_command("AndroidMenu", function()
     menu.show_main_menu()

@@ -27,6 +27,7 @@ local defaults = {
   ui = {
     file_watcher = true,
     autosave = true,
+    restore_logcat = true,
   },
   keymaps = {
     enabled = true,

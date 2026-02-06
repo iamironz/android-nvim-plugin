@@ -50,11 +50,21 @@ local function setup_defaults_autosave_enabled()
   assert.eq(config.get().ui.autosave, true, "autosave default")
 end
 
+local function setup_defaults_restore_logcat_enabled()
+  package.loaded["android.config"] = nil
+  local config = require("android.config")
+
+  config.setup({})
+
+  assert.eq(config.get().ui.restore_logcat, true, "restore logcat default")
+end
+
 function M.run()
   setup_overrides_sdk_root()
   setup_keeps_default_env_keys()
   setup_defaults_file_watcher_enabled()
   setup_defaults_autosave_enabled()
+  setup_defaults_restore_logcat_enabled()
 end
 
 return M
