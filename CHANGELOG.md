@@ -6,6 +6,27 @@ The format is based on Keep a Changelog and this project adheres to SemVer.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-02-06
+
+### Added
+
+- Default variant detection from `isDefault` markers in `buildTypes` and `productFlavors`.
+- APK discovery fallback that scans flavor output subdirectories for variant artifacts.
+- `ui.restore_logcat` option to reopen the logcat dock on startup when it was open previously.
+
+### Changed
+
+- Android hub startup now uses fast initial blocks while run config discovery and prefetch complete.
+- Summary now reports selected target, connected devices, and module/variant fallback resolution.
+- Selection state storage now caches reads and skips unchanged writes to reduce startup overhead.
+
+### Fixed
+
+- Dock panel windows are reused across deploys and close together when either dock split closes.
+- Hub submenu back navigation now rebinds the active hub handle correctly.
+- Logcat reconnect stream handling now preserves partial output chunks safely.
+- Logcat restore and stack-trace navigation are more robust across startup and window changes.
+
 ## [0.3.0] - 2026-02-06
 
 ### Added
