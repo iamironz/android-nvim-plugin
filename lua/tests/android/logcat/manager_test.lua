@@ -235,6 +235,42 @@ local function restore_on_startup_skips_when_disabled()
   end)
 end
 
+local function restore_on_startup_preserves_origin_focus()
+  local open_options = nil
+
+  manager_context({
+    state = {
+      logcat = {
+        restore_on_startup = true,
+      },
+    },
+    stubs = {
+      ["android.ui.panel"] = {
+        open = function(opts)
+          open_options = opts
+          return { buf = 1, win = 10, control_buf = 2, control_win = 11 }
+        end,
+        handle = function()
+          return nil
+        end,
+        clear = function() end,
+        append = function() end,
+        set_header_lines = function() end,
+        clear_body = function() end,
+        replace_body = function() end,
+        trim_body = function() end,
+        close = function()
+          return true
+        end,
+      },
+    },
+  }, function(ctx)
+    ctx.manager.restore_on_startup("/workspace")
+    assert.eq(open_options and open_options.preserve_focus, true, "restore preserve focus")
+    assert.eq(open_options and open_options.origin_win, 10, "restore origin window")
+  end)
+end
+
 local function reopen_with_new_panel_buffers_rebinds_logcat_shortcuts()
   local handles = {
     { buf = 1, win = 10, control_buf = 2, control_win = 11 },
@@ -306,6 +342,7 @@ function M.run()
   closing_panel_clears_restore_on_startup_flag()
   restore_on_startup_opens_logcat_when_enabled()
   restore_on_startup_skips_when_disabled()
+  restore_on_startup_preserves_origin_focus()
   reopen_with_new_panel_buffers_rebinds_logcat_shortcuts()
   reopen_after_close_restarts_stream_and_renders_output()
 end

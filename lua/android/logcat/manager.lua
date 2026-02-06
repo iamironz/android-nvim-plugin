@@ -300,6 +300,8 @@ function M.open(opts)
   local handle = options.panel_handle or panel.open({
     layout = "dock",
     control_height = DEFAULT_CONTROL_HEIGHT,
+    preserve_focus = options.preserve_focus == true,
+    origin_win = origin_win,
   })
   local state = options.state or context.load_state(workspace.root)
   state = set_restore_on_startup(workspace.root, state, true)
@@ -327,10 +329,19 @@ function M.restore_on_startup(workspace_root, opts)
   if not M.should_restore_on_startup(workspace_root, state) then
     return false
   end
+  local origin_win = options.origin_win
+  if origin_win == nil and type(vim.api.nvim_get_current_win) == "function" then
+    local ok, current_win = pcall(vim.api.nvim_get_current_win)
+    if ok then
+      origin_win = current_win
+    end
+  end
   M.open({
     workspace = options.workspace,
     state = state,
     config_id = state_config_id(state),
+    origin_win = origin_win,
+    preserve_focus = true,
   })
   return true
 end

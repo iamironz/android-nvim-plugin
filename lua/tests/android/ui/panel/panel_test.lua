@@ -78,6 +78,24 @@ local function open_dock_sets_winfixbuf_for_body_and_control_windows()
   end)
 end
 
+local function open_dock_preserve_focus_keeps_origin_window_selected()
+  panel_vim.with_panel_module(
+    { on_cmd = panel_vim.on_split_create_window },
+    function(panel, api_state)
+      local origin_win = api_state.current_win
+
+      panel.open({
+        layout = "dock",
+        control_height = 1,
+        preserve_focus = true,
+        origin_win = origin_win,
+      })
+
+      assert.eq(api_state.current_win, origin_win, "preserve focus")
+    end
+  )
+end
+
 local function close_returns_true_and_closes_window_after_open()
   with_panel_api(function(panel, api_state)
     with_open_panel(panel, api_state)
@@ -161,6 +179,7 @@ function M.run()
   open_creates_split_window_and_configures_buffer()
   open_sets_winfixbuf_for_inline_window()
   open_dock_sets_winfixbuf_for_body_and_control_windows()
+  open_dock_preserve_focus_keeps_origin_window_selected()
   append_adds_lines_to_open_buffer()
   clear_removes_all_lines_from_open_buffer()
   set_header_lines_prepends_header_to_existing_body()

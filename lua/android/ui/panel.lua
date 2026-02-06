@@ -239,8 +239,44 @@ local function body_start()
   return header_count
 end
 
+local function preserve_focus_enabled(options)
+  return options and options.preserve_focus == true
+end
+
+local function valid_window(win)
+  return type(win) == "number" and vim.api.nvim_win_is_valid(win)
+end
+
+local function resolve_origin_window(options)
+  if not preserve_focus_enabled(options) then
+    return nil
+  end
+
+  if valid_window(options.origin_win) then
+    return options.origin_win
+  end
+
+  if type(vim.api.nvim_get_current_win) ~= "function" then
+    return nil
+  end
+
+  local ok, win = pcall(vim.api.nvim_get_current_win)
+  if not ok or not valid_window(win) then
+    return nil
+  end
+  return win
+end
+
+local function restore_focus(origin_win)
+  if not valid_window(origin_win) then
+    return
+  end
+  pcall(vim.api.nvim_set_current_win, origin_win)
+end
+
 function M.open(opts)
   local options = opts or {}
+  local origin_win = resolve_origin_window(options)
   mode = options.layout == "dock" and "dock" or "inline"
   if not buffer_valid() then
     reset_header()
@@ -262,6 +298,8 @@ function M.open(opts)
       pin_window_buffer(body_win_id)
     end
   end
+
+  restore_focus(origin_win)
 
   return M.handle()
 end
