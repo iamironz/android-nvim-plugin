@@ -23,6 +23,9 @@ end
 local function stack_trace()
   return require("android.logcat.stack_trace")
 end
+local function panel_header()
+  return require("android.ui.panel_header")
+end
 local keymaps = require("android.utils.keymaps")
 local strings = require("android.utils.strings")
 
@@ -88,11 +91,34 @@ local function persist_filter_history(session, value)
   end
 end
 
+local function resolve_build_context(session)
+  local state = session and session.state or nil
+  local build = state and state.build or nil
+  return {
+    module = build and build.module or nil,
+    variant = build and build.variant or nil,
+  }
+end
+
 local function start_filter_edit(session, deps)
+  local build_context = resolve_build_context(session)
   picker().filter_input({
     prompt_title = "Logcat filter",
     items = session.filter_history or {},
     default = session.filter,
+    panel_names = function(query)
+      local value = query
+      if value == nil then
+        value = session.filter
+      end
+      return panel_header().logcat_filter_panel_names({
+        module = build_context.module,
+        variant = build_context.variant,
+        package = session.package,
+        filter = value,
+        level = session.level,
+      })
+    end,
     on_change = function(value)
       update_filter(session, value, deps, { persist = false })
     end,

@@ -99,6 +99,13 @@ local function apply_control_height(height)
   pcall(vim.api.nvim_win_set_option, control_win_id, "winfixheight", true)
 end
 
+local function pin_window_buffer(win)
+  if not win or not vim.api.nvim_win_is_valid(win) then
+    return
+  end
+  pcall(vim.api.nvim_win_set_option, win, "winfixbuf", true)
+end
+
 local function body_win_valid()
   return body_win_id and vim.api.nvim_win_is_valid(body_win_id)
 end
@@ -164,7 +171,9 @@ local function open_dock(options)
 
   if body_win_valid() and control_win_valid() then
     vim.api.nvim_win_set_buf(body_win_id, body_buf_id)
+    pin_window_buffer(body_win_id)
     vim.api.nvim_win_set_buf(control_win_id, control_buf_id)
+    pin_window_buffer(control_win_id)
     apply_control_height(options and options.control_height or header_count)
     set_lines(control_buf_id, 0, -1, header_lines)
     vim.api.nvim_set_current_win(body_win_id)
@@ -177,10 +186,12 @@ local function open_dock(options)
   vim.cmd("botright split")
   body_win_id = vim.api.nvim_get_current_win()
   vim.api.nvim_win_set_buf(body_win_id, body_buf_id)
+  pin_window_buffer(body_win_id)
 
   vim.cmd("aboveleft split")
   control_win_id = vim.api.nvim_get_current_win()
   vim.api.nvim_win_set_buf(control_win_id, control_buf_id)
+  pin_window_buffer(control_win_id)
 
   apply_control_height(options and options.control_height or header_count)
   set_lines(control_buf_id, 0, -1, header_lines)
@@ -214,11 +225,13 @@ function M.open(opts)
     close_control_window()
     if body_win_valid() then
       vim.api.nvim_win_set_buf(body_win_id, body_buf_id)
+      pin_window_buffer(body_win_id)
       vim.api.nvim_set_current_win(body_win_id)
     else
       vim.cmd("botright split")
       body_win_id = vim.api.nvim_get_current_win()
       vim.api.nvim_win_set_buf(body_win_id, body_buf_id)
+      pin_window_buffer(body_win_id)
     end
   end
 

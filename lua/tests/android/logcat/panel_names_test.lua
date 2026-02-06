@@ -111,11 +111,44 @@ local function level_change_updates_panel_names()
   end)
 end
 
+local function filter_picker_receives_dynamic_panel_names()
+  local captured_names = nil
+  local stubs = {
+    ["android.ui.picker"] = {
+      filter_input = function(opts)
+        captured_names = opts.panel_names
+      end,
+    },
+  }
+
+  logcat_helpers.with_logcat_context({
+    state = base_state(),
+    stubs = stubs,
+  }, function(ctx)
+    logcat_helpers.start_filter_edit(ctx)
+  end)
+
+  assert.eq(type(captured_names), "function", "panel names builder")
+
+  local names = captured_names("Crash")
+  assert.eq(
+    names.prompt,
+    "android://logcat-filter module=:app variant=debug app=com.saved filter=Crash level=W",
+    "filter prompt name"
+  )
+  assert.eq(
+    names.results,
+    "android://logcat-filter-results module=:app variant=debug app=com.saved filter=Crash level=W",
+    "filter results name"
+  )
+end
+
 function M.run()
   open_sets_panel_names_from_selected_values()
   package_change_updates_panel_names()
   filter_change_updates_panel_names()
   level_change_updates_panel_names()
+  filter_picker_receives_dynamic_panel_names()
 end
 
 return M

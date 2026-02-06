@@ -40,6 +40,14 @@ local function panel_names(prefix, control_prefix, fields)
   }
 end
 
+local function filter_panel_names(prefix, results_prefix, fields)
+  local names = panel_names(prefix, results_prefix, fields)
+  return {
+    prompt = names.body,
+    results = names.control,
+  }
+end
+
 function M.logcat_lines(opts)
   local options = opts or {}
   return {
@@ -74,6 +82,27 @@ function M.build_panel_names(opts)
     { key = "variant", value = options.variant },
     { key = "task", value = options.task },
     { key = "filter", value = options.filter },
+  })
+end
+
+function M.build_filter_panel_names(opts)
+  local options = opts or {}
+  return filter_panel_names("android://build-filter", "android://build-filter-results", {
+    { key = "module", value = options.module },
+    { key = "variant", value = options.variant },
+    { key = "task", value = options.task },
+    { key = "filter", value = options.filter },
+  })
+end
+
+function M.logcat_filter_panel_names(opts)
+  local options = opts or {}
+  return filter_panel_names("android://logcat-filter", "android://logcat-filter-results", {
+    { key = "module", value = options.module },
+    { key = "variant", value = options.variant },
+    { key = "app", value = options.package },
+    { key = "filter", value = options.filter },
+    { key = "level", value = options.level },
   })
 end
 

@@ -136,6 +136,18 @@ local function start_filter_edit(session)
     prompt_title = "Build filter",
     items = filter_history,
     default = session.filter,
+    panel_names = function(query)
+      local value = query
+      if value == nil then
+        value = session.filter
+      end
+      return panel_header.build_filter_panel_names({
+        module = session.module,
+        variant = session.variant,
+        task = session.task,
+        filter = value,
+      })
+    end,
     on_change = function(value) update_filter(session, value) end,
     on_accept = function(value)
       update_filter(session, value)

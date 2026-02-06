@@ -7,7 +7,9 @@ local function create_vim_state()
     buffers = {},
     windows = {},
     next_buf_id = 1,
-    buf_options = {}
+    buf_options = {},
+    win_options = {},
+    win_option_calls = {},
   }
 end
 
@@ -134,6 +136,18 @@ local function mock_api_windows(state, mock_api)
   mock_api("nvim_win_is_valid", function(win)
     return state.windows[win] ~= nil or win == 1000
   end)
+
+  mock_api("nvim_win_set_option", function(win, name, value)
+    if not state.win_options[win] then
+      state.win_options[win] = {}
+    end
+    state.win_options[win][name] = value
+    state.win_option_calls[#state.win_option_calls + 1] = {
+      win = win,
+      name = name,
+      value = value,
+    }
+  end)
 end
 
 local function mock_vim_api()
@@ -194,6 +208,16 @@ local function assert_buffer_lines(api_state, buf_id, expected, label)
   end
 end
 
+local function count_win_option_calls(api_state, name, value)
+  local total = 0
+  for _, call in ipairs(api_state.win_option_calls or {}) do
+    if call.name == name and call.value == value then
+      total = total + 1
+    end
+  end
+  return total
+end
+
 local function open_creates_split_window_and_configures_buffer()
   with_panel_api(function(panel, api_state)
     -- Arrange
@@ -213,6 +237,24 @@ local function open_creates_split_window_and_configures_buffer()
     assert.eq(opts.buftype, expected_buftype, "buftype")
     assert.eq(opts.swapfile, false, "swapfile")
     assert.eq(opts.filetype, expected_filetype, "filetype")
+  end)
+end
+
+local function open_sets_winfixbuf_for_inline_window()
+  with_panel_api(function(panel, api_state)
+    panel.open()
+
+    local pinned = count_win_option_calls(api_state, "winfixbuf", true)
+    assert.eq(pinned, 1, "inline winfixbuf")
+  end)
+end
+
+local function open_dock_sets_winfixbuf_for_body_and_control_windows()
+  with_panel_api(function(panel, api_state)
+    panel.open({ layout = "dock", control_height = 1 })
+
+    local pinned = count_win_option_calls(api_state, "winfixbuf", true)
+    assert.eq(pinned >= 2, true, "dock winfixbuf")
   end)
 end
 
@@ -321,6 +363,8 @@ end
 
 function M.run()
   open_creates_split_window_and_configures_buffer()
+  open_sets_winfixbuf_for_inline_window()
+  open_dock_sets_winfixbuf_for_body_and_control_windows()
   append_adds_lines_to_open_buffer()
   clear_removes_all_lines_from_open_buffer()
   set_header_lines_prepends_header_to_existing_body()

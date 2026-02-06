@@ -94,6 +94,55 @@ local function fallback_filter_input(options)
   end)
 end
 
+local function set_buffer_name(buf, name)
+  if not buf or type(name) ~= "string" or name == "" then
+    return
+  end
+  if not vim.api
+    or type(vim.api.nvim_buf_is_valid) ~= "function"
+    or type(vim.api.nvim_buf_set_name) ~= "function"
+  then
+    return
+  end
+  if not vim.api.nvim_buf_is_valid(buf) then
+    return
+  end
+  pcall(vim.api.nvim_buf_set_name, buf, name)
+end
+
+local function resolve_filter_panel_names(panel_names, query)
+  if type(panel_names) == "function" then
+    local ok, names = pcall(panel_names, query)
+    if ok and type(names) == "table" then
+      return names
+    end
+    return nil
+  end
+  if type(panel_names) == "table" then
+    return panel_names
+  end
+  return nil
+end
+
+local function apply_filter_panel_names(prompt_bufnr, action_state, panel_names, query)
+  if not prompt_bufnr then
+    return
+  end
+  local names = resolve_filter_panel_names(panel_names, query)
+  if not names then
+    return
+  end
+
+  set_buffer_name(prompt_bufnr, names.prompt)
+
+  local current_picker = nil
+  if action_state and type(action_state.get_current_picker) == "function" then
+    current_picker = action_state.get_current_picker(prompt_bufnr)
+  end
+  local results_bufnr = current_picker and current_picker.results_bufnr or nil
+  set_buffer_name(results_bufnr, names.results)
+end
+
 local function fallback_select_from_list(options)
   if not vim.ui or not vim.ui.select then
     vim.notify("vim.ui.select not available", vim.log.levels.WARN)
@@ -148,9 +197,12 @@ local function make_handle_select(actions, action_state, on_accept)
   end
 end
 
-local function make_attach_mappings(actions, on_cancel, handle_select)
+local function make_attach_mappings(actions, on_cancel, handle_select, on_ready)
   return function(prompt_bufnr, map)
     actions.select_default:replace(handle_select)
+    if on_ready then
+      on_ready(prompt_bufnr)
+    end
     if on_cancel then
       local map_fn = map or function() end
       map_fn("i", "<esc>", function()
@@ -187,6 +239,9 @@ local function build_filter_picker(opts)
         if opts.on_change then
           opts.on_change(prompt)
         end
+        if opts.on_query then
+          opts.on_query(prompt)
+        end
         return prompt
       end,
       attach_mappings = opts.attach_mappings,
@@ -217,8 +272,15 @@ function M.filter_input(opts)
 
   local results = build_results(items)
   local theme = themes.get_dropdown({})
+  local active_prompt_bufnr = nil
   local handle_select = make_handle_select(actions, action_state, on_accept)
-  local attach_mappings = make_attach_mappings(actions, on_cancel, handle_select)
+  local function update_panel_names(query)
+    apply_filter_panel_names(active_prompt_bufnr, action_state, options.panel_names, query)
+  end
+  local attach_mappings = make_attach_mappings(actions, on_cancel, handle_select, function(prompt_bufnr)
+    active_prompt_bufnr = prompt_bufnr
+    update_panel_names(default)
+  end)
   local picker = build_filter_picker({
     pickers = pickers,
     theme = theme,
@@ -229,6 +291,7 @@ function M.filter_input(opts)
     results = results,
     format = format,
     on_change = on_change,
+    on_query = update_panel_names,
     attach_mappings = attach_mappings,
   })
   attach_mappings(0)
