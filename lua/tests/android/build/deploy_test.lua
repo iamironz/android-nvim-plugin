@@ -114,7 +114,7 @@ local function returns_error_for_missing_adb()
   assert.contains(result.error, "adb", "missing adb error")
 end
 
-local function resolves_app_id_and_activity_from_aapt2_output()
+local function resolves_app_id_from_aapt2_output()
   local aapt2_path = make_temp_file("aapt2")
   local received = { cmd = nil }
   local stdout = table.concat(
@@ -137,7 +137,7 @@ local function resolves_app_id_and_activity_from_aapt2_output()
 
   assert.is_true(result.ok, "resolve app id ok")
   assert.eq(result.app_id, "com.example.app", "resolve app id")
-  assert.eq(result.activity, "com.example.app.MainActivity", "resolve activity")
+  assert.eq(result.activity, nil, "activity not parsed")
   assert.table_eq(
     received.cmd,
     { aapt2_path, "dump", "badging", "/apks/app-debug.apk" },
@@ -204,7 +204,7 @@ function M.run()
   builds_launch_command_with_app_id()
   warns_when_launch_missing_app_id()
   returns_error_for_missing_adb()
-  resolves_app_id_and_activity_from_aapt2_output()
+  resolves_app_id_from_aapt2_output()
   returns_error_for_missing_aapt2_path()
   deploys_with_launch_fallback_without_app_id()
   deploys_with_warning_when_aapt2_missing()

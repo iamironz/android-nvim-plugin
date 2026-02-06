@@ -63,6 +63,7 @@ function M.build_launch_command(adb_path, device, app_id, activity)
     return { ok = false, error = "device required" }
   end
 
+  -- When a specific activity is provided, launch it directly.
   local component = normalize_component(app_id, activity)
   if component then
     return {
@@ -80,6 +81,11 @@ function M.build_launch_command(adb_path, device, app_id, activity)
     }
   end
 
+  -- Launch via monkey which lets the system resolve the correct launcher
+  -- activity. This avoids picking the wrong activity when libraries
+  -- (LeakCanary, Flipper, etc.) register their own launchable entries
+  -- in the merged manifest, and also handles activity-alias launchers
+  -- that aapt2 does not report.
   if app_id and app_id ~= "" then
     return {
       ok = true,
@@ -120,13 +126,12 @@ function M.resolve_app_id(apk_path, aapt2_path, runner)
   end
 
   local stdout = result.stdout or ""
-  local app_id = stdout:match("package: name='([^']+)'" )
+  local app_id = stdout:match("package: name='([^']+)'")
   if not app_id then
     return { ok = false, error = "app id not found" }
   end
 
-  local activity = stdout:match("launchable%-activity: name='([^']+)'" )
-  return { ok = true, app_id = app_id, activity = activity }
+  return { ok = true, app_id = app_id }
 end
 
 function M.deploy(opts)
