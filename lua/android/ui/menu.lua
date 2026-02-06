@@ -88,7 +88,7 @@ local function apply_back_handler(hub_opts)
     end
     nav.current = previous
     apply_back_handler(previous)
-    hub.open(previous)
+    previous._hub_handle = hub.open(previous)
   end
 end
 
