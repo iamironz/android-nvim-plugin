@@ -259,6 +259,91 @@ local function summary_fast_variant_loading_when_empty()
   assert.contains(text, "Variant: loading...", "fast variant loading")
 end
 
+local function summary_fast_refresh_uses_fast_run_detection()
+  local captured_opts = nil
+  local stubs = {
+    ["android.actions.context"] = {
+      workspace = function()
+        return base_workspace()
+      end,
+      load_state = function()
+        return { build = { module = ":app", variant = "debug" } }
+      end,
+    },
+    ["android.state.selection_defaults"] = build_selection_defaults(),
+    ["android.run.registry"] = {
+      resolve = function(_, opts)
+        captured_opts = opts
+        return {
+          label = "Android",
+          type = "android",
+          meta = { module = ":app", variant = "debug" },
+        }
+      end,
+    },
+    ["android.command.runner"] = {
+      new = function()
+        return {}
+      end,
+    },
+    ["android.sdk.discovery"] = {
+      new = function()
+        return {
+          tools = function()
+            return {}
+          end,
+        }
+      end,
+    },
+    ["android.devices.adb"] = {
+      list = function()
+        return {}
+      end,
+      parse_devices = function()
+        return {}
+      end,
+    },
+    ["android.actions.defaults"] = {
+      select_module = function(modules)
+        return modules and modules[1] or nil
+      end,
+      select_device_serial = function()
+        return nil
+      end,
+    },
+    ["android.gradle.variants"] = {
+      detect_default_variant = function()
+        return nil
+      end,
+    },
+  }
+
+  local original_schedule = vim.schedule
+  local ok, err = pcall(function()
+    vim.schedule = function(fn)
+      fn()
+    end
+
+    stubs_helper.with_stubs(stubs, function()
+      package.loaded["android.ui.summary"] = nil
+      local summary = require("android.ui.summary")
+      local _, refresh = summary.lines({ mode = "fast", include_adb = false })
+      assert.eq(type(refresh), "function", "summary fast refresh")
+      refresh(function() end)
+    end)
+  end)
+  vim.schedule = original_schedule
+  if not ok then
+    error(err)
+  end
+
+  assert.eq(
+    captured_opts and captured_opts.detect_opts and captured_opts.detect_opts.fast,
+    true,
+    "summary fast run detection"
+  )
+end
+
 local function summary_target_auto_when_device_connected()
   local stubs = build_summary_stubs({
     workspace = base_workspace(),
@@ -356,6 +441,7 @@ function M.run()
   summary_menu_status_empty_shows_tip()
   summary_build_fallback_module_from_workspace()
   summary_fast_variant_loading_when_empty()
+  summary_fast_refresh_uses_fast_run_detection()
   summary_target_auto_when_device_connected()
   summary_avd_hidden_when_not_set()
   summary_avd_shown_when_set()

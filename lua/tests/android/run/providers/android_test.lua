@@ -166,6 +166,45 @@ local function prefers_tasks_for_large_workspaces()
   assert_android_config(list, { module = ":app" })
 end
 
+local function fast_mode_skips_gradle_task_fallback()
+  local fetch_calls = 0
+  local stubs = {
+    ["android.actions.build_helpers"] = {
+      fetch_task_lines = function()
+        fetch_calls = fetch_calls + 1
+        return {}
+      end,
+    },
+    ["android.gradle.cache"] = {
+      persistent = function()
+        return {
+          modules = function(_, loader)
+            return loader()
+          end,
+          android_modules = function(_, _, loader)
+            return loader()
+          end,
+        }
+      end,
+    },
+  }
+
+  stubs_helper.with_stubs(stubs, function()
+    package.loaded["android.run.providers.android"] = nil
+    local fast_provider = require("android.run.providers.android")
+    local list = fast_provider.detect(default_workspace("/workspace/fast"), default_state(), {
+      modules = { ":app" },
+      read = function()
+        return nil
+      end,
+      fast = true,
+    })
+    assert.eq(#list, 0, "fast mode defers android module discovery without metadata")
+  end)
+
+  assert.eq(fetch_calls, 0, "fast mode should not fetch gradle task list")
+end
+
 local function caches_android_module_build_scan_results()
   local read_calls = 0
   local stubs = {
@@ -214,6 +253,7 @@ function M.run()
   detects_android_modules_from_gradle_tasks_when_build_scan_empty()
   detects_android_modules_from_gradle_tasks_when_forced()
   skips_build_file_scan_when_use_gradle_tasks_enabled()
+  fast_mode_skips_gradle_task_fallback()
   caches_android_module_build_scan_results()
   prefers_tasks_for_large_workspaces()
 end

@@ -51,11 +51,13 @@ function M.detect(workspace, _, opts)
     return {}
   end
 
-  local runner = (opts and opts.runner) or runner_module.new()
   local modules
   if opts and opts.tasks then
     modules = detect_run_tasks(opts.tasks)
+  elseif opts and opts.fast then
+    modules = {}
   else
+    local runner = (opts and opts.runner) or runner_module.new()
     modules = load_run_modules(workspace.root, runner)
   end
   local configs = {}

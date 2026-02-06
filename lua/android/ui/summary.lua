@@ -10,6 +10,7 @@ local run_registry = require("android.run.registry")
 local gradle_variants = require("android.gradle.variants")
 
 local adb_cache = {}
+local fast_run_resolve_opts = { detect_opts = { fast = true } }
 
 local function now_ms()
   return vim.loop.hrtime() / 1000000
@@ -191,11 +192,11 @@ local function resolve_build_with_fallbacks(state, workspace)
   return { module = module, variant = variant }
 end
 
-local function build_lines(workspace, state, adb_state, menu_status)
+local function build_lines(workspace, state, adb_state, menu_status, run_resolve_opts)
   local build = resolve_build_with_fallbacks(state, workspace)
   local device = selection_defaults.device_defaults(state)
   local avd = selection_defaults.avd_defaults(state)
-  local run_config = run_registry.resolve(workspace)
+  local run_config = run_registry.resolve(workspace, run_resolve_opts)
   local logcat_package = state and state.logcat and state.logcat.package or nil
   local resolved_adb_state = adb_state or resolve_adb_state(workspace.root)
 
@@ -216,7 +217,11 @@ local function build_lines(workspace, state, adb_state, menu_status)
   push_item(lines, "Variant", normalize(build.variant))
 
   push_section(lines, "Devices")
-  push_item(lines, "Target", format_target(device.serial, resolved_adb_state.devices, resolved_adb_state))
+  push_item(
+    lines,
+    "Target",
+    format_target(device.serial, resolved_adb_state.devices, resolved_adb_state)
+  )
   push_item(lines, "Connected", format_connected(resolved_adb_state.devices, resolved_adb_state))
   if avd.name and avd.name ~= "" then
     push_item(lines, "AVD", normalize(avd.name))
@@ -254,7 +259,11 @@ local function build_lines_fast(workspace, state, adb_state, menu_status)
   push_item(lines, "Variant", variant_display)
 
   push_section(lines, "Devices")
-  push_item(lines, "Target", format_target(device.serial, resolved_adb_state.devices, resolved_adb_state))
+  push_item(
+    lines,
+    "Target",
+    format_target(device.serial, resolved_adb_state.devices, resolved_adb_state)
+  )
   push_item(lines, "Connected", format_connected(resolved_adb_state.devices, resolved_adb_state))
   if avd.name and avd.name ~= "" then
     push_item(lines, "AVD", normalize(avd.name))
@@ -351,7 +360,8 @@ function M.lines(opts)
             workspace,
             state,
             { devices = {}, emulator_status = nil },
-            opts and opts.menu_status
+            opts and opts.menu_status,
+            fast_run_resolve_opts
           ))
         end)
       end
@@ -374,7 +384,13 @@ function M.lines(opts)
     local lines = build_lines_fast(workspace, state, cached, opts and opts.menu_status)
     local function refresh(callback)
       vim.schedule(function()
-        callback(build_lines(workspace, state, cached, opts and opts.menu_status))
+        callback(build_lines(
+          workspace,
+          state,
+          cached,
+          opts and opts.menu_status,
+          fast_run_resolve_opts
+        ))
       end)
     end
     return lines, refresh
@@ -394,7 +410,8 @@ function M.lines(opts)
           workspace,
           state,
           { devices = {}, emulator_status = nil },
-          opts and opts.menu_status
+          opts and opts.menu_status,
+          fast_run_resolve_opts
         ))
       end)
     end
@@ -405,7 +422,13 @@ function M.lines(opts)
   local lines = build_lines_fast(workspace, state, placeholder, opts and opts.menu_status)
   local function refresh(callback)
     resolve_adb_state_async(workspace.root, tools.adb, function(adb_state)
-      callback(build_lines(workspace, state, adb_state, opts and opts.menu_status))
+      callback(build_lines(
+        workspace,
+        state,
+        adb_state,
+        opts and opts.menu_status,
+        fast_run_resolve_opts
+      ))
     end)
   end
   return lines, refresh

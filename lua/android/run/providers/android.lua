@@ -87,20 +87,36 @@ local function detect_modules(workspace, opts)
   end)
   local read_file = options.read or default_read
   local use_gradle_tasks = options.use_gradle_tasks
+  local is_fast = options.fast == true
+
+  local function modules_from_tasks()
+    local task_lines = options.tasks
+    if not task_lines then
+      if is_fast then
+        return nil
+      end
+      task_lines = build_helpers.fetch_task_lines(workspace.root, options.runner)
+    end
+    return gradle_tasks.android_modules(task_lines)
+  end
 
   if use_gradle_tasks then
+    local task_modules = modules_from_tasks()
+    if not task_modules then
+      return {}
+    end
     return cache.android_modules(workspace.root, modules, function()
-      local task_lines = options.tasks
-        or build_helpers.fetch_task_lines(workspace.root, options.runner)
-      return gradle_tasks.android_modules(task_lines)
+      return task_modules
     end)
   end
 
   if #modules > module_scan_limit then
+    local task_modules = modules_from_tasks()
+    if not task_modules then
+      return {}
+    end
     return cache.android_modules(workspace.root, modules, function()
-      local task_lines = options.tasks
-        or build_helpers.fetch_task_lines(workspace.root, options.runner)
-      return gradle_tasks.android_modules(task_lines)
+      return task_modules
     end)
   end
 
@@ -116,14 +132,9 @@ local function detect_modules(workspace, opts)
     return scan
   end)
 
-  if #result == 0 or use_gradle_tasks then
-    local task_lines = options.tasks
-      or build_helpers.fetch_task_lines(workspace.root, options.runner)
-    local task_modules = gradle_tasks.android_modules(task_lines)
-    if #result == 0 then
-      return task_modules
-    end
-    if use_gradle_tasks and #task_modules > 0 then
+  if #result == 0 then
+    local task_modules = modules_from_tasks()
+    if task_modules then
       return task_modules
     end
   end
