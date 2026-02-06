@@ -6,12 +6,16 @@ The format is based on Keep a Changelog and this project adheres to SemVer.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-02-07
+
 ### Added
 
 - Eight direct zero-arg commands with `<Plug>` mappings:
   `:AndroidRun`, `:AndroidRunStop`, `:AndroidLogcat`, `:AndroidBuildPrompt`,
   `:AndroidBuildAssemble`, `:AndroidGradleTasks`, `:AndroidIOSBuild`,
   `:AndroidIOSDeploy`.
+- Contextual panel naming for build/logcat body and controls to improve
+  dock/picker discoverability.
 
 ### Changed
 
@@ -19,6 +23,20 @@ The format is based on Keep a Changelog and this project adheres to SemVer.
   `<leader>am`, `<leader>at`, `<leader>ao`, `<leader>aa`, `<leader>ab`.
 - README, reference docs, and guides now distinguish default-shortcut commands
   from direct commands that have no default shortcut.
+- Android deploy launch now uses `adb shell monkey` for launcher resolution.
+- Selection state persistence now uses lock-safe atomic writes and 3-way merge
+  to preserve updates across concurrent sessions.
+
+### Fixed
+
+- Workspace detection now falls back to `cwd` when the active buffer is outside
+  the Android project.
+- Startup logcat restore is deferred to `VimEnter`, avoiding early restore races.
+- Dock panel restore now closes stale `android://` windows before opening, which
+  prevents duplicated/squeezed panel pairs.
+- APK discovery now excludes `androidTest` artifacts from deploy target
+  selection to avoid launch failures after successful install.
+- Logcat reopen behavior now preserves output and keymaps more consistently.
 
 ## [0.4.0] - 2026-02-06
 
