@@ -149,7 +149,6 @@ function M.deploy(opts)
   end
 
   local app_id = options.app_id
-  local activity = options.activity
   if (not app_id or app_id == "") and options.aapt2_path then
     local resolved = M.resolve_app_id(options.apk_path, options.aapt2_path, exec_runner)
     if not resolved.ok then
@@ -160,10 +159,9 @@ function M.deploy(opts)
       }
     end
     app_id = resolved.app_id
-    activity = resolved.activity
   end
 
-  local launch = M.build_launch_command(options.adb_path, options.device, app_id, activity)
+  local launch = M.build_launch_command(options.adb_path, options.device, app_id)
   if not launch.ok then
     return launch
   end
@@ -174,7 +172,6 @@ function M.deploy(opts)
       warning = launch.warning or "launch skipped",
       install = install_result,
       app_id = app_id,
-      activity = activity,
     }
   end
 
@@ -188,7 +185,6 @@ function M.deploy(opts)
     install = install_result,
     launch = launch_result,
     app_id = app_id,
-    activity = activity,
   }
 end
 
