@@ -5,7 +5,9 @@ local runner_module = require("android.command.runner")
 local adb = require("android.devices.adb")
 local sdk_discovery = require("android.sdk.discovery")
 local selection_defaults = require("android.state.selection_defaults")
+local action_defaults = require("android.actions.defaults")
 local run_registry = require("android.run.registry")
+local gradle_variants = require("android.gradle.variants")
 
 local adb_cache = {}
 
@@ -143,7 +145,7 @@ local function resolve_adb_state(root)
   return state
 end
 
-local function format_devices(devices, adb_state)
+local function format_connected(devices, adb_state)
   if adb_state and adb_state.loading then
     return "loading..."
   end
@@ -159,14 +161,43 @@ local function format_devices(devices, adb_state)
   return table.concat(serials, ", ")
 end
 
-local function build_lines(workspace, state, adb_state, menu_status)
+local function format_target(saved_serial, devices, adb_state)
+  if adb_state and adb_state.loading then
+    return "loading..."
+  end
+  local resolved = action_defaults.select_device_serial(devices or {}, saved_serial)
+  if not resolved then
+    return "none"
+  end
+  if saved_serial and saved_serial ~= "" and resolved == saved_serial then
+    return resolved
+  end
+  return resolved .. " (auto)"
+end
+
+local function resolve_build_with_fallbacks(state, workspace)
   local build = selection_defaults.build_defaults(state)
+  local module = build.module
+  local variant = build.variant
+  if (not module or module == "") and workspace then
+    module = action_defaults.select_module(workspace.modules)
+  end
+  if (not variant or variant == "") and workspace and module then
+    local detected = gradle_variants.detect_default_variant(workspace.root, module)
+    if detected and detected ~= "" then
+      variant = detected
+    end
+  end
+  return { module = module, variant = variant }
+end
+
+local function build_lines(workspace, state, adb_state, menu_status)
+  local build = resolve_build_with_fallbacks(state, workspace)
   local device = selection_defaults.device_defaults(state)
   local avd = selection_defaults.avd_defaults(state)
   local run_config = run_registry.resolve(workspace)
   local logcat_package = state and state.logcat and state.logcat.package or nil
   local resolved_adb_state = adb_state or resolve_adb_state(workspace.root)
-  local emulator_status = resolved_adb_state.emulator_status
 
   local lines = { "Summary" }
 
@@ -184,12 +215,11 @@ local function build_lines(workspace, state, adb_state, menu_status)
   push_item(lines, "Module", normalize(build.module))
   push_item(lines, "Variant", normalize(build.variant))
 
-  push_section(lines, "Device Manager")
-  push_item(lines, "Device", normalize(device.serial))
-  push_item(lines, "Devices", format_devices(resolved_adb_state.devices, resolved_adb_state))
-  push_item(lines, "AVD", normalize(avd.name))
-  if emulator_status ~= nil then
-    push_item(lines, "Emulator", normalize(emulator_status))
+  push_section(lines, "Devices")
+  push_item(lines, "Target", format_target(device.serial, resolved_adb_state.devices, resolved_adb_state))
+  push_item(lines, "Connected", format_connected(resolved_adb_state.devices, resolved_adb_state))
+  if avd.name and avd.name ~= "" then
+    push_item(lines, "AVD", normalize(avd.name))
   end
 
   push_section(lines, "Logcat")
@@ -198,12 +228,15 @@ local function build_lines(workspace, state, adb_state, menu_status)
 end
 
 local function build_lines_fast(workspace, state, adb_state, menu_status)
-  local build = selection_defaults.build_defaults(state)
+  local build = resolve_build_with_fallbacks(state, workspace)
   local device = selection_defaults.device_defaults(state)
   local avd = selection_defaults.avd_defaults(state)
   local logcat_package = state and state.logcat and state.logcat.package or nil
   local resolved_adb_state = adb_state or { devices = {}, emulator_status = nil }
-  local emulator_status = resolved_adb_state.emulator_status
+
+  local module_display = normalize(build.module)
+  local variant_display = build.variant and build.variant ~= "" and normalize(build.variant)
+    or "loading..."
 
   local lines = { "Summary" }
 
@@ -217,15 +250,14 @@ local function build_lines_fast(workspace, state, adb_state, menu_status)
   append_menu_status(lines, menu_status)
 
   push_section(lines, "Build")
-  push_item(lines, "Module", normalize(build.module))
-  push_item(lines, "Variant", normalize(build.variant))
+  push_item(lines, "Module", module_display)
+  push_item(lines, "Variant", variant_display)
 
   push_section(lines, "Devices")
-  push_item(lines, "Device", normalize(device.serial))
-  push_item(lines, "Devices", format_devices(resolved_adb_state.devices, resolved_adb_state))
-  push_item(lines, "AVD", normalize(avd.name))
-  if emulator_status ~= nil then
-    push_item(lines, "Emulator", normalize(emulator_status))
+  push_item(lines, "Target", format_target(device.serial, resolved_adb_state.devices, resolved_adb_state))
+  push_item(lines, "Connected", format_connected(resolved_adb_state.devices, resolved_adb_state))
+  if avd.name and avd.name ~= "" then
+    push_item(lines, "AVD", normalize(avd.name))
   end
 
   push_section(lines, "Logcat")
