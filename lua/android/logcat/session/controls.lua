@@ -178,6 +178,9 @@ local function flush_backlog(session)
 end
 
 local function handle_output(session, lines, deps)
+  if session.stopped then
+    return
+  end
   output().append_raw_lines(session, lines)
   local filtered = filters().filter_lines(lines, session.filter)
   if session.status_message and #filtered > 0 then
