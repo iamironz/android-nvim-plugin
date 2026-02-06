@@ -57,143 +57,103 @@ Full first-run walkthrough: [docs/getting-started.md](docs/getting-started.md)
 
 ### Commands and Keymaps
 
-- **Five commands** cover the full workflow: `:AndroidMenu`, `:AndroidTargets`,
-  `:AndroidTools`, `:AndroidActions`, and `:AndroidBuild`.
-- **Default keymaps** (`<leader>am`, `<leader>at`, `<leader>ao`, `<leader>aa`,
-  `<leader>ab`) with `<Plug>` mappings for custom bindings.
-  Keymaps are fully configurable or can be disabled entirely.
+- **Five commands:** `:AndroidMenu`, `:AndroidTargets`, `:AndroidTools`,
+  `:AndroidActions`, `:AndroidBuild`.
+- **Default keymaps** (`<leader>am/at/ao/aa/ab`) with `<Plug>` mappings.
+  Configurable or can be disabled.
   See [docs/reference/keymaps.md](docs/reference/keymaps.md).
 
 ### Navigation and UX
 
-- **Hub menus with summary panel.** Section shortcuts (`[1]`, `[2]`, ...),
-  search-first flow (`/` or any letter), and back navigation.
-  The menu adapts to the project type: Android-only, iOS, KMP, and JVM items
-  appear or hide based on detected workspace capabilities.
+- **Hub menus with summary panel.** Section shortcuts (`[1]`...`[9]`),
+  search (`/` or any letter), back navigation. Menu adapts to project type:
+  Android, iOS, KMP, and JVM items show or hide automatically.
   See [docs/guides/navigation.md](docs/guides/navigation.md).
-- **Picker flexibility.** Telescope integration with automatic `vim.ui` fallback
-  when Telescope is unavailable.
-  See [docs/support/troubleshooting.md#telescope-missing](docs/support/troubleshooting.md#telescope-missing).
+- **Picker flexibility.** Telescope with automatic `vim.ui` fallback.
 
 ### Build and Deploy
 
-- **One-key build and deploy.** `:AndroidBuild` resolves module and variant from
-  saved defaults, builds, installs the APK, launches the app, and opens logcat.
-- **Prompt-driven builds.** Interactive module and variant selection when you need
-  to override defaults.
+- **One-key build and deploy.** `:AndroidBuild` resolves module/variant from
+  saved defaults, builds, installs, launches, and opens logcat.
+- **Prompt-driven builds.** Interactive module/variant selection to override defaults.
 - **Assemble-only mode.** Build without deploying.
-- **Default variant detection.** Reads `isDefault true` / `isDefault = true` /
-  `isDefault.set(true)` markers from `buildTypes` and `productFlavors` in
-  build.gradle to auto-select the right variant in multi-flavor projects.
-- **APK discovery.** Finds APKs by variant, scans flavor subdirectories for
-  multi-flavor builds, supports explicit path overrides, and optional full-scan
-  fallback via `build.scan_all_apk_outputs`.
-- **Gradle task browser.** Browse and run any Gradle task via Telescope
-  (`:Telescope android tasks`).
-- **Build output dock.** Two-layer bottom panel with fixed header strip.
-  Real-time streaming, text filter with history, and auto-scroll.
-  Read-only buffer prevents accidental edits.
-- **Quickfix integration.** Kotlin (`e: file:(line, col)`) and Java
-  (`file:line: error:`) errors are parsed from build output and loaded into
-  the quickfix list automatically on failure.
+- **Default variant detection.** Reads `isDefault` markers from `buildTypes` and
+  `productFlavors` in build.gradle to auto-select the right variant.
+- **APK discovery.** Resolves by variant, scans flavor subdirectories, supports
+  path overrides and full-scan fallback (`build.scan_all_apk_outputs`).
+- **Gradle task browser.** Browse and run any task via `:Telescope android tasks`.
+- **Build output dock.** Bottom panel with header strip, real-time streaming,
+  text filter with history, auto-scroll, read-only buffer.
+- **Quickfix integration.** Kotlin and Java errors parsed into quickfix list on
+  build failure.
   See [docs/guides/build-and-deploy.md](docs/guides/build-and-deploy.md).
 
 ### iOS Build and Deploy
 
-- **xcodebuild integration.** Builds using workspace or project with auto-discovered
-  schemes. Preferred scheme matches the workspace base name, then `ios`, then first
-  available.
-- **Simulator deploy.** Discovers booted simulator, installs and launches the app.
-- **Physical device deploy.** Discovers paired devices via `xcrun devicectl`, installs
-  and launches.
+- **xcodebuild integration.** Builds with auto-discovered schemes.
+- **Simulator and physical device deploy.** Discovers booted simulator or paired
+  device, installs and launches.
 
 ### Logcat
 
-- **Dock panel.** Split layout with a fixed control header (package, filter, level)
-  and a scrolling body. Closing either window closes both.
-- **Package filtering.** Filter by app package name. Auto-detects package from APK,
-  manifest, or build.gradle. PID-based filtering when the process is running.
-- **Text and regex filtering.** Space-separated terms with AND logic. Wrap a term
-  in `/pattern/` for Lua regex matching. Filter history (up to 20 entries) with
-  Telescope completion.
-- **Log level filtering.** V, D, I, W, E levels applied as logcat filter arguments.
-- **Pause and resume.** Pauses display output with backlog buffering. Resume flushes
-  the backlog.
-- **Restart, clear, and reset.** Restart the logcat process, clear visible output,
-  or reset (unpause + clear) with single keybinds.
-- **Stack trace navigation.** Press `<CR>` on a `(File.kt:42)` line to jump to
-  the source file at that line in your editor.
-- **Auto-reconnect.** Exponential backoff (1s base, 8s max, up to 5 retries)
-  reconnects automatically when the logcat process dies.
-- **Syntax highlighting.** Color-coded output by log level.
-- **Multi-session support.** One logcat session per run config with independent
-  package, filter, level, and history state.
-- **Interactive header.** Press `<CR>` on header lines to edit package (line 1),
-  filter (line 2), or level (line 3) inline.
+- **Dock panel.** Fixed control header (package/filter/level) and scrolling body.
+  Closing either window closes both.
+- **Package filtering.** Auto-detects from APK, manifest, or build.gradle.
+  PID-based when the process is running.
+- **Text and regex filtering.** Space-separated terms (AND logic), `/pattern/`
+  for regex. Filter history with Telescope completion.
+- **Log level filtering.** V, D, I, W, E applied as logcat arguments.
+- **Pause/resume.** Buffers output while paused, flushes on resume.
+- **Restart, clear, reset.** Single-key controls for each.
+- **Stack trace navigation.** `<CR>` on `(File.kt:42)` jumps to source.
+- **Auto-reconnect.** Exponential backoff, up to 5 retries.
+- **Syntax highlighting.** Color-coded by log level.
+- **Multi-session.** Independent state per run config.
+- **Interactive header.** `<CR>` on header lines opens the relevant picker.
   See [docs/guides/logcat.md](docs/guides/logcat.md).
 
-### Device Manager
+### Device Manager and ADB
 
-- **Device selection.** Pick the target ADB device. Auto-selects the first connected
-  device when none is saved.
-- **AVD selection and creation.** Pick an existing AVD or create a new one with
-  interactive device profile and system image selection.
-- **Emulator start and stop.** Launch an emulator by AVD name, wait for boot
-  completion, or stop a running emulator.
-  See [docs/guides/devices-and-adb.md](docs/guides/devices-and-adb.md).
-
-### ADB Actions
-
-- **Install APK.** Install a discovered or overridden APK on the selected device.
-- **Clear app data.** Clear the app's data on the device.
-- **Uninstall app.** Remove the app from the device.
+- **Device selection.** Pick target device, auto-selects first connected.
+- **AVD selection and creation.** Pick or create AVDs with device profile and
+  system image selection.
+- **Emulator start/stop.** Launch by AVD name with boot wait, or stop running.
+- **ADB actions.** Install APK, clear app data, uninstall.
   See [docs/guides/devices-and-adb.md](docs/guides/devices-and-adb.md).
 
 ### Run Configurations
 
-- **Multi-target support.** Android, iOS, JVM, Gradle task, and user-defined
-  shell configs are auto-discovered and selectable from a single menu.
-- **Run All orchestration.** When multiple target types exist, a virtual
-  `Run All` config runs them in parallel. Target ordering and preferred modules
-  are configurable via `run.run_all`.
-- **JSON shell configs.** Define custom commands in `.android.nvim.json` with
-  `id`, `label`, `command`, and `args`. Runs in the build output panel with
-  real-time streaming.
-- **Stop running jobs.** Stop all active run processes from the menu.
+- **Multi-target.** Android, iOS, JVM, Gradle task, and shell configs
+  auto-discovered from a single menu.
+- **Run All.** Parallel execution across target types. Ordering and preferred
+  modules configurable via `run.run_all`.
+- **JSON shell configs.** Custom commands in `.android.nvim.json` with real-time
+  output.
+- **Stop running jobs** from the menu.
   See [docs/guides/run-configs.md](docs/guides/run-configs.md).
 
 ### Workspace and SDK
 
-- **Project detection.** Auto-detects Gradle root, Android modules, KMP targets,
-  and iOS workspaces/projects. Workspace is cached and invalidated on settings
-  file changes.
-- **SDK root discovery.** Resolution chain: plugin config, `local.properties`,
-  environment variables (`ANDROID_SDK_ROOT`, `ANDROID_HOME`), OS-specific
-  default paths. Tool paths (adb, aapt2, emulator, avdmanager, sdkmanager) are
-  resolved from the SDK root.
-- **Gradle caching.** Task lists, variants, and module lists are cached with
-  file-stamp-based invalidation. Background prefetch runs Gradle task discovery
-  when the menu opens so subsequent actions are instant.
+- **Project detection.** Gradle root, Android modules, KMP targets, iOS
+  workspaces. Cached with settings-file invalidation.
+- **SDK discovery.** Plugin config -> `local.properties` -> env vars
+  (`ANDROID_SDK_ROOT`, `ANDROID_HOME`) -> OS defaults. Tools resolved from root.
+- **Gradle caching.** Tasks, variants, modules cached with mtime invalidation.
+  Background prefetch on menu open.
 - **Persistent selections.** Module, variant, device, AVD, run config, logcat
-  package, filter, level, and filter history are saved per workspace and restored
-  across Neovim sessions.
-- **Health checks.** `:checkhealth android` validates SDK root, Android tools,
-  Gradle setup, and iOS tools.
+  state saved per workspace across sessions.
+- **Health checks.** `:checkhealth android` validates SDK, tools, Gradle, iOS.
   See [docs/reference/configuration.md](docs/reference/configuration.md) and
   [docs/support/troubleshooting.md](docs/support/troubleshooting.md).
 
 ### Editor Integration
 
-- **Auto-save.** Modified buffers are saved on `InsertLeave` and `FocusLost`
-  with 200ms debounce. Configurable via `ui.autosave`.
-- **File watcher.** Detects external file changes on `FocusGained` and
-  `BufEnter`, prompts with Reload / Keep / Diff / Force Save options.
-  Configurable via `ui.file_watcher`.
-- **Read-only output buffers.** Logcat and build output buffers are non-editable
-  to prevent accidental modifications. Plugin writes still work through the
-  internal API.
-- **Transparent roadmap.** Current support and planned gaps are tracked in
-  [docs/roadmap.md](docs/roadmap.md).
+- **Auto-save.** Saves on `InsertLeave`/`FocusLost` with debounce.
+  Configurable via `ui.autosave`.
+- **File watcher.** Detects external changes, prompts Reload / Keep / Diff /
+  Force Save. Configurable via `ui.file_watcher`.
+- **Read-only output buffers.** Logcat and build panels are non-editable.
+- **Transparent roadmap.** Tracked in [docs/roadmap.md](docs/roadmap.md).
 
 ## Documentation
 
