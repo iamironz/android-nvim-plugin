@@ -23,6 +23,7 @@ end
 local function stack_trace()
   return require("android.logcat.stack_trace")
 end
+local keymaps = require("android.utils.keymaps")
 local strings = require("android.utils.strings")
 
 local function normalize_input(value)
@@ -213,19 +214,9 @@ local function setup_keymaps(session, deps)
   if session.keymaps_ready then
     return
   end
-  local function keymap_targets()
-    local buffers = {}
-    if session.buf then
-      buffers[#buffers + 1] = session.buf
-    end
-    if session.control_buf and session.control_buf ~= session.buf then
-      buffers[#buffers + 1] = session.control_buf
-    end
-    return buffers
-  end
-
   local function map(lhs, fn)
-    for _, buffer in ipairs(keymap_targets()) do
+    local buffers = keymaps.buffer_targets(session.buf, session.control_buf)
+    for _, buffer in ipairs(buffers) do
       vim.keymap.set("n", lhs, fn, { buffer = buffer, silent = true })
     end
   end

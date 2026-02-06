@@ -310,35 +310,26 @@ function M._initial_line(summary_lines, block_count, initial_index)
   return initial_line(summary_lines, blocks, initial_index)
 end
 
-function M.open(opts)
-  local options = opts or {}
-  local blocks = options.blocks or {}
-  local summary_lines = options.summary_lines or {}
-  local title = options.title or "Android Hub"
-  local on_select = options.on_select
-  local on_search = options.on_search
-  local initial_index = options.initial_index
-  local on_cancel = options.on_cancel
-  local on_close = options.on_close
-  local state = { blocks = blocks, summary_lines = summary_lines }
-
-  local lines = build_lines(state.summary_lines, state.blocks)
+local function open_handle(lines, title, summary_lines, blocks, initial_index)
   local buf = create_buffer(lines)
   if not buf then
-    return
+    return nil, nil
   end
 
   local width, height = calc_dimensions(lines, title)
   local row, col = center_position(width, height)
   local win = open_window(buf, width, height, row, col, title)
   if not win then
-    return
+    return nil, nil
   end
 
-  set_initial_cursor(win, lines, state.summary_lines, state.blocks, initial_index)
+  set_initial_cursor(win, lines, summary_lines, blocks, initial_index)
+  return buf, win
+end
 
+local function make_close_window(win, on_close)
   local closed = false
-  local function close_window(reason)
+  return function(reason)
     if closed then
       return
     end
@@ -350,14 +341,20 @@ function M.open(opts)
       on_close(reason)
     end
   end
+end
 
-  local function select_current()
+local function move_to_first_block(win, summary_lines, blocks)
+  local line = first_block_line(summary_lines, blocks)
+  if line and win and vim.api.nvim_win_is_valid(win) then
+    vim.api.nvim_win_set_cursor(win, { line, 0 })
+  end
+end
+
+local function make_select_current(state, win, close_window, on_select)
+  return function()
     local index = current_index(state.blocks, state.summary_lines, win)
     if not index then
-      local line = first_block_line(state.summary_lines, state.blocks)
-      if line and win and vim.api.nvim_win_is_valid(win) then
-        vim.api.nvim_win_set_cursor(win, { line, 0 })
-      end
+      move_to_first_block(win, state.summary_lines, state.blocks)
       return
     end
     local block = state.blocks[index]
@@ -366,8 +363,10 @@ function M.open(opts)
       on_select(block, index)
     end
   end
+end
 
-  local function select_by_index(index)
+local function make_select_by_index(state, close_window, on_select)
+  return function(index)
     if not index or index < 1 or index > #state.blocks then
       return
     end
@@ -380,14 +379,41 @@ function M.open(opts)
       on_select(block, index)
     end
   end
+end
 
-  local function handle_search(char)
+local function make_search_handler(state, win, close_window, on_search)
+  return function(char)
     local index = current_index(state.blocks, state.summary_lines, win)
     close_window()
     if on_search then
       on_search(char, index)
     end
   end
+end
+
+function M.open(opts)
+  local options = opts or {}
+  local state = {
+    blocks = options.blocks or {},
+    summary_lines = options.summary_lines or {},
+  }
+  local title = options.title or "Android Hub"
+  local lines = build_lines(state.summary_lines, state.blocks)
+  local buf, win = open_handle(
+    lines,
+    title,
+    state.summary_lines,
+    state.blocks,
+    options.initial_index
+  )
+  if not buf or not win then
+    return
+  end
+
+  local close_window = make_close_window(win, options.on_close)
+  local select_current = make_select_current(state, win, close_window, options.on_select)
+  local select_by_index = make_select_by_index(state, close_window, options.on_select)
+  local handle_search = make_search_handler(state, win, close_window, options.on_search)
 
   set_keymaps(
     buf,
@@ -395,9 +421,9 @@ function M.open(opts)
     close_window,
     select_current,
     select_by_index,
-    on_search,
+    options.on_search,
     handle_search,
-    on_cancel
+    options.on_cancel
   )
 
   return {
