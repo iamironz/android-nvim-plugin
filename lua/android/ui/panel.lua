@@ -7,6 +7,8 @@ local control_win_id = nil
 local mode = "inline"
 local header_lines = {}
 local header_count = 0
+local group_augroup = nil
+local closing_group = false
 
 local function buffer_valid()
   return body_buf_id and vim.api.nvim_buf_is_valid(body_buf_id)
@@ -28,6 +30,7 @@ local function ensure_body_buffer()
   vim.api.nvim_buf_set_option(body_buf_id, "buftype", "nofile")
   vim.api.nvim_buf_set_option(body_buf_id, "swapfile", false)
   vim.api.nvim_buf_set_option(body_buf_id, "filetype", "android-log")
+  vim.api.nvim_buf_set_option(body_buf_id, "modifiable", false)
 end
 
 local function ensure_control_buffer()
@@ -79,21 +82,12 @@ local function apply_control_height(height)
   pcall(vim.api.nvim_win_set_option, control_win_id, "winfixheight", true)
 end
 
-local function open_dock(options)
-  ensure_body_buffer()
-  ensure_control_buffer()
+local function body_win_valid()
+  return body_win_id and vim.api.nvim_win_is_valid(body_win_id)
+end
 
-  vim.cmd("botright split")
-  body_win_id = vim.api.nvim_get_current_win()
-  vim.api.nvim_win_set_buf(body_win_id, body_buf_id)
-
-  vim.cmd("aboveleft split")
-  control_win_id = vim.api.nvim_get_current_win()
-  vim.api.nvim_win_set_buf(control_win_id, control_buf_id)
-
-  apply_control_height(options and options.control_height or header_count)
-  set_lines(control_buf_id, 0, -1, header_lines)
-  vim.api.nvim_set_current_win(body_win_id)
+local function control_win_valid()
+  return control_win_id and vim.api.nvim_win_is_valid(control_win_id)
 end
 
 local function close_control_window()
@@ -112,6 +106,69 @@ local function close_body_window()
   end
   body_win_id = nil
   return false
+end
+
+local function clear_win_group()
+  if group_augroup then
+    pcall(vim.api.nvim_del_augroup_by_id, group_augroup)
+    group_augroup = nil
+  end
+end
+
+local function setup_win_group()
+  clear_win_group()
+  if not body_win_id or not control_win_id then
+    return
+  end
+  group_augroup = vim.api.nvim_create_augroup("AndroidPanelGroup", { clear = true })
+  local watched = { [tostring(body_win_id)] = true, [tostring(control_win_id)] = true }
+  vim.api.nvim_create_autocmd("WinClosed", {
+    group = group_augroup,
+    pattern = "*",
+    callback = function(ev)
+      if closing_group then
+        return
+      end
+      if not watched[ev.match] then
+        return
+      end
+      closing_group = true
+      vim.schedule(function()
+        M.close()
+        closing_group = false
+      end)
+    end,
+  })
+end
+
+local function open_dock(options)
+  ensure_body_buffer()
+  ensure_control_buffer()
+
+  if body_win_valid() and control_win_valid() then
+    vim.api.nvim_win_set_buf(body_win_id, body_buf_id)
+    vim.api.nvim_win_set_buf(control_win_id, control_buf_id)
+    apply_control_height(options and options.control_height or header_count)
+    set_lines(control_buf_id, 0, -1, header_lines)
+    vim.api.nvim_set_current_win(body_win_id)
+    return
+  end
+
+  close_control_window()
+  close_body_window()
+
+  vim.cmd("botright split")
+  body_win_id = vim.api.nvim_get_current_win()
+  vim.api.nvim_win_set_buf(body_win_id, body_buf_id)
+
+  vim.cmd("aboveleft split")
+  control_win_id = vim.api.nvim_get_current_win()
+  vim.api.nvim_win_set_buf(control_win_id, control_buf_id)
+
+  apply_control_height(options and options.control_height or header_count)
+  set_lines(control_buf_id, 0, -1, header_lines)
+  vim.api.nvim_set_current_win(body_win_id)
+  setup_win_group()
 end
 
 local function reset_header()
@@ -138,9 +195,14 @@ function M.open(opts)
   else
     ensure_body_buffer()
     close_control_window()
-    vim.cmd("botright split")
-    body_win_id = vim.api.nvim_get_current_win()
-    vim.api.nvim_win_set_buf(body_win_id, body_buf_id)
+    if body_win_valid() then
+      vim.api.nvim_win_set_buf(body_win_id, body_buf_id)
+      vim.api.nvim_set_current_win(body_win_id)
+    else
+      vim.cmd("botright split")
+      body_win_id = vim.api.nvim_get_current_win()
+      vim.api.nvim_win_set_buf(body_win_id, body_buf_id)
+    end
   end
 
   return M.handle()
@@ -253,6 +315,7 @@ function M.trim_body(max_lines)
 end
 
 function M.close()
+  clear_win_group()
   local control_closed = close_control_window()
   local body_closed = close_body_window()
   return control_closed or body_closed
