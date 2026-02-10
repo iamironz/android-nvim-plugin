@@ -43,6 +43,23 @@ local function build_config_options(state, opts)
   return config_opts
 end
 
+local function should_persist(opts)
+  return not (opts and opts.persist == false)
+end
+
+local function is_selectable_config(config)
+  return config and config.type ~= "gradle_task"
+end
+
+local function default_selectable(list)
+  for _, entry in ipairs(list or {}) do
+    if is_selectable_config(entry) then
+      return entry
+    end
+  end
+  return configs.default(list)
+end
+
 local function build_registry(store)
   local registry = {}
 
@@ -64,8 +81,11 @@ local function build_registry(store)
     local list = configs.from_workspace(workspace, build_config_options(state, opts))
     local current_id = selected_id(state)
     local selected = configs.find(list, current_id)
-    local resolved = selected or configs.default(list)
-    if resolved and resolved.id and resolved.id ~= current_id then
+    if not is_selectable_config(selected) then
+      selected = nil
+    end
+    local resolved = selected or default_selectable(list)
+    if should_persist(opts) and resolved and resolved.id and resolved.id ~= current_id then
       local next_state = apply_selected_id(state, resolved.id)
       save_state(workspace, next_state)
     end
@@ -77,8 +97,11 @@ local function build_registry(store)
     local list = configs.from_workspace(workspace, build_config_options(state, opts))
     local current_id = selected_id(state)
     local selected = configs.find(list, current_id)
-    local resolved = selected or configs.default(list)
-    if resolved and resolved.id and resolved.id ~= current_id then
+    if not is_selectable_config(selected) then
+      selected = nil
+    end
+    local resolved = selected or default_selectable(list)
+    if should_persist(opts) and resolved and resolved.id and resolved.id ~= current_id then
       local next_state = apply_selected_id(state, resolved.id)
       save_state(workspace, next_state)
     end

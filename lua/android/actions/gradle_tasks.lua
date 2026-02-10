@@ -84,7 +84,7 @@ function M.fetch_tasks(root, runner)
   return cache.tasks(root, modules, function()
     local result = build_helpers.run_gradle(root, { "tasks", "--all" }, exec_runner)
     if not result or not result.ok then
-      return {}
+      return {}, false
     end
     local lines = vim.split(result.stdout or "", "\n", { plain = true })
     return tasks_parser.parse(lines)

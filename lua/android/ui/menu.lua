@@ -37,8 +37,69 @@ local function update_summary(hub_opts, menu_status)
   end
 end
 
-local function update_current_summary(menu_status)
-  update_summary(nav.current, menu_status)
+local function status_value(menu_status, key)
+  for _, item in ipairs(menu_status and menu_status.items or {}) do
+    if item and item.key == key then
+      return item.value
+    end
+    if item and key == "run_configs" and item.label == "Run configs" then
+      return item.value
+    end
+  end
+  return nil
+end
+
+local function run_configs_loading(menu_status)
+  local value = status_value(menu_status, "run_configs")
+  return value == "loading..."
+end
+
+local function resolve_run_snapshot(workspace, prefetch_state)
+  if menu_prefetch.cached_run_snapshot and workspace and workspace.root then
+    local cached = menu_prefetch.cached_run_snapshot(workspace.root)
+    if cached then
+      return cached
+    end
+  end
+  if prefetch_state and prefetch_state.run_snapshot then
+    return prefetch_state.run_snapshot
+  end
+  return nil
+end
+
+local function supports_dynamic_blocks(hub_opts)
+  local source = hub_opts and hub_opts._blocks_source or nil
+  return source == "main" or source == "actions"
+end
+
+local function refresh_blocks_from_prefetch(hub_opts, menu_status, prefetch_state)
+  if not hub_opts or not supports_dynamic_blocks(hub_opts) then
+    return
+  end
+  local workspace = context.workspace()
+  if not workspace or not workspace.root then
+    return
+  end
+  if hub_opts._workspace_root and hub_opts._workspace_root ~= workspace.root then
+    return
+  end
+  local run_snapshot = resolve_run_snapshot(workspace, prefetch_state)
+  if not run_snapshot then
+    return
+  end
+  if run_configs_loading(menu_status) then
+    return
+  end
+  hub_opts.blocks = menu_items.top_level_blocks(workspace, { run_snapshot = run_snapshot })
+end
+
+local function update_current_summary(menu_status, prefetch_state)
+  local current = nav.current
+  if not current then
+    return
+  end
+  refresh_blocks_from_prefetch(current, menu_status, prefetch_state)
+  update_summary(current, menu_status)
 end
 
 local function clear_prefetch()
@@ -156,6 +217,8 @@ function M.show_main_menu()
     title = "Android Menu",
     summary_lines = summary_lines,
     blocks = blocks,
+    _blocks_source = "main",
+    _workspace_root = workspace and workspace.root or nil,
   }
   local function reopen_hub()
     open_hub_with_nav(hub_opts)
@@ -195,14 +258,9 @@ function M.show_main_menu()
       return
     end
     local session = workspace and ensure_prefetch(workspace) or nil
-    local run_snapshot = session and session.run_snapshot
-      or (menu_prefetch.cached_run_snapshot and menu_prefetch.cached_run_snapshot(workspace and workspace.root) or nil)
-    local new_blocks = menu_items.top_level_blocks(workspace, { run_snapshot = run_snapshot })
-    if nav.current ~= hub_opts then
-      return
-    end
-    hub_opts.blocks = new_blocks
-    update_summary(hub_opts, session and session.status or cached_status)
+    local status = session and session.status or cached_status
+    refresh_blocks_from_prefetch(hub_opts, status, session)
+    update_summary(hub_opts, status)
   end)
 
   if refresh_summary then
@@ -337,6 +395,8 @@ function M.show_actions_menu(opts)
     title = "Android Actions",
     summary_lines = summary.lines({ mode = "fast", menu_status = cached_status }),
     blocks = blocks,
+    _blocks_source = "actions",
+    _workspace_root = workspace and workspace.root or nil,
   }
   if options.on_cancel then
     hub_opts._fallback_on_cancel = options.on_cancel
@@ -380,14 +440,9 @@ function M.show_actions_menu(opts)
       return
     end
     local session = workspace and ensure_prefetch(workspace) or nil
-    local run_snapshot = session and session.run_snapshot
-      or (menu_prefetch.cached_run_snapshot and menu_prefetch.cached_run_snapshot(workspace and workspace.root) or nil)
-    local new_blocks = menu_items.top_level_blocks(workspace, { run_snapshot = run_snapshot })
-    if nav.current ~= hub_opts then
-      return
-    end
-    hub_opts.blocks = new_blocks
-    update_summary(hub_opts, session and session.status or cached_status)
+    local status = session and session.status or cached_status
+    refresh_blocks_from_prefetch(hub_opts, status, session)
+    update_summary(hub_opts, status)
   end)
 end
 

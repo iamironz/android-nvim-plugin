@@ -209,6 +209,204 @@ local function default_registry_save_state()
   end)
 end
 
+local function resolves_android_when_gradle_tasks_selected()
+  local calls = { save = 0 }
+  local original_registry = package.loaded["android.run.registry"]
+  local stubbed = {
+    ["android.state.selection_store"] = {
+      load = function()
+        return { run = { config_id = "gradle_tasks" } }
+      end,
+      save = function(_, state)
+        calls.save = calls.save + 1
+        calls.saved_state = state
+        return true
+      end,
+    },
+    ["android.run.configs"] = {
+      from_workspace = function()
+        return {
+          {
+            id = "android:app",
+            type = "android",
+            target = "android",
+            label = "Android :app",
+          },
+          {
+            id = "gradle_tasks",
+            type = "gradle_task",
+            target = "gradle",
+            label = "Gradle tasks",
+          },
+        }
+      end,
+      find = function(list, id)
+        for _, entry in ipairs(list) do
+          if entry.id == id then
+            return entry
+          end
+        end
+        return nil
+      end,
+      default = function(list)
+        return list[1]
+      end,
+    },
+  }
+
+  stubs_helper.with_stubs(stubbed, function()
+    package.loaded["android.run.registry"] = nil
+    local registry = require("android.run.registry")
+    local resolved = registry.resolve(registry_helper.build_workspace())
+    assert.eq(resolved and resolved.id, "android:app", "fallback from gradle tasks selection")
+  end)
+  package.loaded["android.run.registry"] = original_registry
+
+  assert.eq(calls.save, 1, "selection rewritten once")
+  assert.eq(
+    calls.saved_state and calls.saved_state.run and calls.saved_state.run.config_id,
+    "android:app",
+    "persisted fallback selection"
+  )
+end
+
+local function keeps_gradle_tasks_when_it_is_only_config()
+  local calls = { save = 0 }
+  local original_registry = package.loaded["android.run.registry"]
+  local stubbed = {
+    ["android.state.selection_store"] = {
+      load = function()
+        return { run = { config_id = "gradle_tasks" } }
+      end,
+      save = function()
+        calls.save = calls.save + 1
+        return true
+      end,
+    },
+    ["android.run.configs"] = {
+      from_workspace = function()
+        return {
+          {
+            id = "gradle_tasks",
+            type = "gradle_task",
+            target = "gradle",
+            label = "Gradle tasks",
+          },
+        }
+      end,
+      find = function(list, id)
+        for _, entry in ipairs(list) do
+          if entry.id == id then
+            return entry
+          end
+        end
+        return nil
+      end,
+      default = function(list)
+        return list[1]
+      end,
+    },
+  }
+
+  stubs_helper.with_stubs(stubbed, function()
+    package.loaded["android.run.registry"] = nil
+    local registry = require("android.run.registry")
+    local resolved = registry.resolve(registry_helper.build_workspace())
+    assert.eq(resolved and resolved.id, "gradle_tasks", "keep single gradle tasks config")
+  end)
+  package.loaded["android.run.registry"] = original_registry
+
+  assert.eq(calls.save, 0, "selection unchanged")
+end
+
+local function resolve_skips_persist_when_requested()
+  local calls = { save = 0 }
+  local original_registry = package.loaded["android.run.registry"]
+  local stubbed = {
+    ["android.state.selection_store"] = {
+      load = function()
+        return {}
+      end,
+      save = function()
+        calls.save = calls.save + 1
+        return true
+      end,
+    },
+    ["android.run.configs"] = {
+      from_workspace = function()
+        return {
+          {
+            id = "android:app",
+            type = "android",
+            target = "android",
+            label = "Android :app",
+          },
+        }
+      end,
+      find = function()
+        return nil
+      end,
+      default = function(list)
+        return list[1]
+      end,
+    },
+  }
+
+  stubs_helper.with_stubs(stubbed, function()
+    package.loaded["android.run.registry"] = nil
+    local registry = require("android.run.registry")
+    local resolved = registry.resolve(registry_helper.build_workspace(), { persist = false })
+    assert.eq(resolved and resolved.id, "android:app", "resolved without persist")
+  end)
+  package.loaded["android.run.registry"] = original_registry
+
+  assert.eq(calls.save, 0, "resolve did not persist")
+end
+
+local function snapshot_skips_persist_when_requested()
+  local calls = { save = 0 }
+  local original_registry = package.loaded["android.run.registry"]
+  local stubbed = {
+    ["android.state.selection_store"] = {
+      load = function()
+        return {}
+      end,
+      save = function()
+        calls.save = calls.save + 1
+        return true
+      end,
+    },
+    ["android.run.configs"] = {
+      from_workspace = function()
+        return {
+          {
+            id = "android:app",
+            type = "android",
+            target = "android",
+            label = "Android :app",
+          },
+        }
+      end,
+      find = function()
+        return nil
+      end,
+      default = function(list)
+        return list[1]
+      end,
+    },
+  }
+
+  stubs_helper.with_stubs(stubbed, function()
+    package.loaded["android.run.registry"] = nil
+    local registry = require("android.run.registry")
+    local snapshot = registry.snapshot(registry_helper.build_workspace(), { persist = false })
+    assert.eq(snapshot and snapshot.current and snapshot.current.id, "android:app", "snapshot resolved")
+  end)
+  package.loaded["android.run.registry"] = original_registry
+
+  assert.eq(calls.save, 0, "snapshot did not persist")
+end
+
 function M.run()
   selection_persists_config_id()
   resolve_uses_selected_id()
@@ -221,6 +419,10 @@ function M.run()
   default_registry_load_opts_workspace()
   default_registry_save_opts_workspace()
   default_registry_save_state()
+  resolves_android_when_gradle_tasks_selected()
+  keeps_gradle_tasks_when_it_is_only_config()
+  resolve_skips_persist_when_requested()
+  snapshot_skips_persist_when_requested()
 end
 
 return M

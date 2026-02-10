@@ -342,6 +342,7 @@ local function summary_fast_refresh_uses_fast_run_detection()
     true,
     "summary fast run detection"
   )
+  assert.eq(captured_opts and captured_opts.persist, false, "summary fast resolve does not persist")
 end
 
 local function summary_target_auto_when_device_connected()

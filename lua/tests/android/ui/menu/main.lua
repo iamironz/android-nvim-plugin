@@ -181,6 +181,358 @@ local function main_menu_passes_menu_status_to_summary()
   )
 end
 
+local function main_menu_keeps_loading_configs_while_prefetch_running()
+  local scheduled_fn = nil
+  local captured_opts = nil
+  local loading_status = {
+    items = {
+      { key = "run_configs", label = "Run configs", value = "loading..." },
+    },
+  }
+  local stubs = {
+    ["android.ui.menu_items"] = {
+      top_level_blocks_fast = function()
+        return {
+          {
+            title = "Run Configurations",
+            items = {
+              { id = "_loading", label = "Loading configurations..." },
+            },
+          },
+        }
+      end,
+      top_level_blocks = function()
+        return {
+          {
+            title = "Run Configurations",
+            items = {},
+          },
+        }
+      end,
+    },
+    ["android.ui.summary"] = {
+      lines = function()
+        return { "Summary" }
+      end,
+    },
+    ["android.ui.hub"] = {
+      open = function(opts)
+        captured_opts = opts
+        return "handle"
+      end,
+      update = function(_, opts)
+        captured_opts = opts
+      end,
+    },
+    ["android.ui.actions"] = { open = function() end },
+    ["android.actions.context"] = {
+      workspace = function()
+        return { root = "/workspace", gradle = { root = "/workspace" } }
+      end,
+    },
+    ["android.state.menu_prefetch"] = {
+      status = function()
+        return nil
+      end,
+      start = function()
+        return {
+          status = loading_status,
+          run_snapshot = {
+            list = {
+              {
+                id = "gradle_tasks",
+                type = "gradle_task",
+                target = "gradle",
+                label = "Gradle tasks",
+              },
+            },
+            current = nil,
+          },
+          cancel = function() end,
+        }
+      end,
+    },
+  }
+
+  stubs_helper.with_stubs(stubs, function()
+    package.loaded["android.ui.menu"] = nil
+    local menu = require("android.ui.menu")
+    menu._schedule = function(fn)
+      scheduled_fn = fn
+    end
+    menu.show_main_menu()
+  end)
+
+  stubs_helper.with_stubs(stubs, function()
+    if scheduled_fn then
+      scheduled_fn()
+    end
+  end)
+
+  local configs = captured_opts and captured_opts.blocks and captured_opts.blocks[1] or nil
+  assert.eq(configs and configs.items and configs.items[1] and configs.items[1].id, "_loading", "loading retained")
+end
+
+local function main_menu_refreshes_configs_when_prefetch_ready()
+  local scheduled_fn = nil
+  local prefetch_on_update = nil
+  local captured_opts = nil
+  local loading_status = {
+    items = {
+      { key = "run_configs", label = "Run configs", value = "loading..." },
+    },
+  }
+  local ready_status = {
+    items = {
+      { key = "run_configs", label = "Run configs", value = "2" },
+    },
+  }
+  local stubs = {
+    ["android.ui.menu_items"] = {
+      top_level_blocks_fast = function()
+        return {
+          {
+            title = "Run Configurations",
+            items = {
+              { id = "_loading", label = "Loading configurations..." },
+            },
+          },
+        }
+      end,
+      top_level_blocks = function(_, opts)
+        local list = opts and opts.run_snapshot and opts.run_snapshot.list or {}
+        local has_android = false
+        for _, entry in ipairs(list) do
+          if entry.type == "android" then
+            has_android = true
+            break
+          end
+        end
+        if has_android then
+          return {
+            {
+              title = "Run Configurations",
+              items = {
+                { id = "run_select:android:app", label = "Android :app" },
+              },
+            },
+          }
+        end
+        return {
+          {
+            title = "Run Configurations",
+            items = {},
+          },
+        }
+      end,
+    },
+    ["android.ui.summary"] = {
+      lines = function()
+        return { "Summary" }
+      end,
+    },
+    ["android.ui.hub"] = {
+      open = function(opts)
+        captured_opts = opts
+        return "handle"
+      end,
+      update = function(_, opts)
+        captured_opts = opts
+      end,
+    },
+    ["android.ui.actions"] = { open = function() end },
+    ["android.actions.context"] = {
+      workspace = function()
+        return { root = "/workspace", gradle = { root = "/workspace" } }
+      end,
+    },
+    ["android.state.menu_prefetch"] = {
+      status = function()
+        return nil
+      end,
+      start = function(_, opts)
+        prefetch_on_update = opts and opts.on_update
+        return {
+          status = loading_status,
+          run_snapshot = {
+            list = {
+              {
+                id = "gradle_tasks",
+                type = "gradle_task",
+                target = "gradle",
+                label = "Gradle tasks",
+              },
+            },
+            current = nil,
+          },
+          cancel = function() end,
+        }
+      end,
+    },
+  }
+
+  stubs_helper.with_stubs(stubs, function()
+    package.loaded["android.ui.menu"] = nil
+    local menu = require("android.ui.menu")
+    menu._schedule = function(fn)
+      scheduled_fn = fn
+    end
+    menu.show_main_menu()
+  end)
+
+  stubs_helper.with_stubs(stubs, function()
+    if scheduled_fn then
+      scheduled_fn()
+    end
+    if prefetch_on_update then
+      prefetch_on_update(ready_status, {
+        run_snapshot = {
+          list = {
+            {
+              id = "android:app",
+              type = "android",
+              target = "android",
+              label = "Android :app",
+            },
+          },
+          current = nil,
+        },
+      })
+    end
+  end)
+
+  local configs = captured_opts and captured_opts.blocks and captured_opts.blocks[1] or nil
+  assert.eq(
+    configs and configs.items and configs.items[1] and configs.items[1].id,
+    "run_select:android:app",
+    "configs refreshed"
+  )
+end
+
+local function main_menu_prefers_cached_snapshot_over_stale_session_snapshot()
+  local scheduled_fn = nil
+  local captured_opts = nil
+  local stubs = {
+    ["android.ui.menu_items"] = {
+      top_level_blocks_fast = function()
+        return {
+          {
+            title = "Run Configurations",
+            items = {
+              { id = "_loading", label = "Loading configurations..." },
+            },
+          },
+        }
+      end,
+      top_level_blocks = function(_, opts)
+        local run_snapshot = opts and opts.run_snapshot or {}
+        local items = {}
+        for _, config in ipairs(run_snapshot.list or {}) do
+          if config.type ~= "gradle_task" then
+            items[#items + 1] = {
+              id = "run_select:" .. config.id,
+              label = config.label or config.id,
+            }
+          end
+        end
+        return {
+          {
+            title = "Run Configurations",
+            items = items,
+          },
+        }
+      end,
+    },
+    ["android.ui.summary"] = {
+      lines = function()
+        return { "Summary" }
+      end,
+    },
+    ["android.ui.hub"] = {
+      open = function(opts)
+        captured_opts = opts
+        return "handle"
+      end,
+      update = function(_, opts)
+        captured_opts = opts
+      end,
+    },
+    ["android.ui.actions"] = { open = function() end },
+    ["android.actions.context"] = {
+      workspace = function()
+        return { root = "/workspace", gradle = { root = "/workspace" } }
+      end,
+    },
+    ["android.state.menu_prefetch"] = {
+      status = function()
+        return nil
+      end,
+      start = function()
+        return {
+          status = {
+            items = {
+              { key = "run_configs", label = "Run configs", value = "5" },
+            },
+          },
+          run_snapshot = {
+            list = {
+              {
+                id = "gradle_tasks",
+                type = "gradle_task",
+                target = "gradle",
+                label = "Gradle tasks",
+              },
+            },
+            current = nil,
+          },
+          cancel = function() end,
+        }
+      end,
+      cached_run_snapshot = function()
+        return {
+          list = {
+            {
+              id = "android:app",
+              type = "android",
+              target = "android",
+              label = "Android :app",
+            },
+            {
+              id = "gradle_tasks",
+              type = "gradle_task",
+              target = "gradle",
+              label = "Gradle tasks",
+            },
+          },
+          current = nil,
+        }
+      end,
+    },
+  }
+
+  stubs_helper.with_stubs(stubs, function()
+    package.loaded["android.ui.menu"] = nil
+    local menu = require("android.ui.menu")
+    menu._schedule = function(fn)
+      scheduled_fn = fn
+    end
+    menu.show_main_menu()
+  end)
+
+  stubs_helper.with_stubs(stubs, function()
+    if scheduled_fn then
+      scheduled_fn()
+    end
+  end)
+
+  local configs = captured_opts and captured_opts.blocks and captured_opts.blocks[1] or nil
+  assert.eq(
+    configs and configs.items and configs.items[1] and configs.items[1].id,
+    "run_select:android:app",
+    "cached snapshot takes precedence"
+  )
+end
+
 function M.run()
   main_menu_uses_hub()
   main_menu_sets_title()
@@ -189,6 +541,9 @@ function M.run()
   main_menu_on_search_opens_actions()
   main_menu_on_cancel_reopens_hub()
   main_menu_passes_menu_status_to_summary()
+  main_menu_keeps_loading_configs_while_prefetch_running()
+  main_menu_refreshes_configs_when_prefetch_ready()
+  main_menu_prefers_cached_snapshot_over_stale_session_snapshot()
 end
 
 return M

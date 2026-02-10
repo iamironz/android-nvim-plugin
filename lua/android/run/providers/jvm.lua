@@ -9,16 +9,11 @@ local M = {}
 local cache = gradle_cache.persistent()
 
 local function load_tasks(root, runner)
-  local modules = cache.modules(root, function()
-    return gradle_workspace.load_modules(root)
-  end)
-  return cache.tasks(root, modules, function()
-    local result = build_helpers.run_gradle(root, { "tasks", "--all" }, runner)
-    if not result or not result.ok then
-      return {}
-    end
-    return vim.split(result.stdout or "", "\n", { plain = true })
-  end)
+  local task_result = build_helpers.fetch_task_lines(root, runner)
+  if not task_result or not task_result.ok then
+    return nil
+  end
+  return task_result.lines
 end
 
 local function detect_run_tasks(lines)
@@ -42,6 +37,9 @@ local function load_run_modules(root, runner)
   end)
   return cache.jvm_run_modules(root, modules, function()
     local lines = load_tasks(root, runner)
+    if not lines then
+      return {}, false
+    end
     return detect_run_tasks(lines)
   end)
 end

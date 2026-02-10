@@ -170,7 +170,11 @@ local function fallback_select_from_list(options)
 
   local items = options.items or {}
   if #items == 0 then
-    vim.notify("No entries to select", vim.log.levels.WARN)
+    local label = options.title or "Select"
+    vim.notify(
+      string.format("No entries to select for %s", label),
+      vim.log.levels.WARN
+    )
     return
   end
 
@@ -339,7 +343,11 @@ function M.select_from_list(opts)
   local themes = require("telescope.themes")
 
   if #items == 0 then
-    vim.notify("No entries to select", vim.log.levels.WARN)
+    local label = options.title or "Select"
+    vim.notify(
+      string.format("No entries to select for %s", label),
+      vim.log.levels.WARN
+    )
     return
   end
 

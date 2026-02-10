@@ -95,7 +95,11 @@ local function detect_modules(workspace, opts)
       if is_fast then
         return nil
       end
-      task_lines = build_helpers.fetch_task_lines(workspace.root, options.runner)
+      local task_result = build_helpers.fetch_task_lines(workspace.root, options.runner)
+      if not task_result or not task_result.ok then
+        return nil
+      end
+      task_lines = task_result.lines
     end
     return gradle_tasks.android_modules(task_lines)
   end

@@ -90,7 +90,10 @@ function M.new(opts)
     if entry and entry.stamp == stamp then
       return entry.value
     end
-    local value = loader()
+    local value, cacheable = loader()
+    if cacheable == false then
+      return value
+    end
     bucket[key] = { stamp = stamp, value = value }
     store.set(workspace_root, bucket)
     return value

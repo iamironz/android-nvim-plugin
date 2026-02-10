@@ -81,6 +81,15 @@ local function merge_modules(preferred, modules)
   return ordered
 end
 
+local function first_nonempty_line(value)
+  for _, line in ipairs(vim.split(value or "", "\n", { plain = true })) do
+    if line ~= "" then
+      return line
+    end
+  end
+  return nil
+end
+
 local function parse_variants_from_result(result)
   if not result or not result.ok then
     return {}
@@ -91,15 +100,36 @@ end
 
 local function fetch_variants_from_modules(root, runner, modules)
   local preferred = action_defaults.select_module(modules)
+  local first_error = nil
+  local first_task = nil
+  local had_error = false
   for _, module in ipairs(merge_modules(preferred, modules)) do
     local task = module .. ":tasks"
     local result = M.run_gradle(root, { task, "--all" }, runner)
-    local variants = parse_variants_from_result(result)
-    if #variants > 0 then
-      return variants
+    if not result or not result.ok then
+      had_error = true
+      if not first_error then
+        local message = first_nonempty_line(result and result.stderr or "")
+          or first_nonempty_line(result and result.stdout or "")
+          or "Gradle tasks failed"
+        first_error = message
+        first_task = task
+      end
+    else
+      local variants = parse_variants_from_result(result)
+      if #variants > 0 then
+        return variants, had_error
+      end
     end
   end
-  return {}
+  if first_error then
+    local task_label = first_task or "module tasks"
+    vim.notify(
+      string.format("Gradle tasks failed for %s: %s", task_label, first_error),
+      vim.log.levels.WARN
+    )
+  end
+  return {}, had_error
 end
 
 function M.build_command(root, extra_args)
@@ -149,12 +179,25 @@ function M.fetch_task_lines(root, runner, opts)
   local modules = options.modules or cache.modules(root, function()
     return gradle_workspace.load_modules(root)
   end)
-  return cache.tasks(root, modules, function()
+  return cache.task_lines(root, modules, function()
     local result = M.run_gradle(root, { "tasks", "--all" }, exec_runner)
     if not result or not result.ok then
-      return {}
+      return {
+        ok = false,
+        code = result and result.code or 1,
+        stdout = result and result.stdout or "",
+        stderr = result and result.stderr or "",
+        lines = {},
+      }, false
     end
-    return vim.split(result.stdout or "", "\n", { plain = true })
+    local lines = vim.split(result.stdout or "", "\n", { plain = true })
+    return {
+      ok = true,
+      code = result.code,
+      stdout = result.stdout,
+      stderr = result.stderr,
+      lines = lines,
+    }
   end)
 end
 
@@ -184,16 +227,24 @@ function M.fetch_variants(root, runner)
     return gradle_workspace.load_modules(root)
   end)
   return cache.variants(root, modules, function()
-    local lines = M.fetch_task_lines(
+    local task_result = M.fetch_task_lines(
       root,
       exec_runner,
       { modules = modules }
     )
+    local lines = (task_result and task_result.lines) or {}
     local variants = gradle_variants.parse(lines)
     if #variants > 0 then
       return variants
     end
-    return fetch_variants_from_modules(root, exec_runner, modules)
+    local fallback, had_error = fetch_variants_from_modules(root, exec_runner, modules)
+    if #fallback > 0 then
+      return fallback
+    end
+    if (task_result and task_result.ok == false) or had_error then
+      return fallback, false
+    end
+    return fallback
   end)
 end
 

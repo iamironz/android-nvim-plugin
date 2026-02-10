@@ -47,7 +47,11 @@ end
 
 local function build_run_snapshot(state, workspace, detect_opts)
   local providers = state.providers or run_providers.defaults()
-  return run_registry.snapshot(workspace, { providers = providers, detect_opts = detect_opts })
+  return run_registry.snapshot(workspace, {
+    providers = providers,
+    detect_opts = detect_opts,
+    persist = false,
+  })
 end
 
 local function notify_update(state, token, on_update)
@@ -122,10 +126,16 @@ function M.start(workspace, opts)
   local options = opts or {}
   local root = workspace.root
   local state = ensure_state(root, options.providers)
-  local token = next_token()
+  local keep_token = state.jobs and state.jobs.gradle_tasks ~= nil
+  local token = keep_token and (state.token or next_token()) or next_token()
   state.token = token
 
-  state.run_snapshot = build_run_snapshot(state, workspace, { fast = true })
+  local cached_task_lines = state.data.task_lines
+  if cached_task_lines and #cached_task_lines > 0 then
+    state.run_snapshot = build_run_snapshot(state, workspace, { tasks = cached_task_lines })
+  else
+    state.run_snapshot = build_run_snapshot(state, workspace, { fast = true })
+  end
   set_status_value(state.status, "run_configs", "loading...")
 
   if state.data.tasks then
@@ -136,10 +146,12 @@ function M.start(workspace, opts)
   end
 
   if workspace.gradle then
-    if not state.data.tasks and not state.jobs.gradle_tasks then
-      start_gradle_tasks_job(state, workspace, options.on_update, token)
-    elseif state.run_snapshot and state.run_snapshot.list then
+    if cached_task_lines and #cached_task_lines > 0 then
       set_status_value(state.status, "run_configs", count_value(state.run_snapshot.list))
+    elseif state.jobs.gradle_tasks then
+      set_status_value(state.status, "run_configs", "loading...")
+    elseif not state.data.tasks and not state.jobs.gradle_tasks then
+      start_gradle_tasks_job(state, workspace, options.on_update, token)
     end
   else
     set_status_value(state.status, "gradle_tasks", "unavailable")

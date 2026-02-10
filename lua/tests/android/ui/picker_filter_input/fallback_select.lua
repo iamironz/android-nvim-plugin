@@ -98,7 +98,7 @@ end
 
 local function select_from_list_notifies_when_empty()
   local result = run_select_from_list_empty()
-  assert.eq(result.notify_args.message, "No entries to select", "notify message")
+  assert.eq(result.notify_args.message, "No entries to select for Select", "notify message")
 end
 
 local function select_from_list_warns_when_empty()

@@ -10,7 +10,10 @@ local run_registry = require("android.run.registry")
 local gradle_variants = require("android.gradle.variants")
 
 local adb_cache = {}
-local fast_run_resolve_opts = { detect_opts = { fast = true } }
+local fast_run_resolve_opts = {
+  detect_opts = { fast = true },
+  persist = false,
+}
 
 local function now_ms()
   return vim.loop.hrtime() / 1000000
