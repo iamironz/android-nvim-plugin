@@ -27,6 +27,37 @@ local function normalize_component(app_id, activity)
   return app_id .. "/" .. activity
 end
 
+local function trim(value)
+  if not value then
+    return ""
+  end
+  return value:gsub("^%s+", ""):gsub("%s+$", "")
+end
+
+local function parse_component_from_resolve_output(stdout, app_id)
+  local component = nil
+  for _, line in ipairs(vim.split(stdout or "", "\n", { plain = true })) do
+    local trimmed = trim(line)
+    if trimmed ~= "" then
+      local name_value = trimmed:match("name=([^%s]+)")
+      local token = name_value or trimmed:match("^([^%s]+)")
+      if token and token:find("/", 1, true) then
+        component = token
+      end
+    end
+  end
+  if not component then
+    return nil
+  end
+  if app_id and app_id ~= "" then
+    local pkg = component:match("^([^/]+)/")
+    if pkg and pkg ~= app_id then
+      return nil
+    end
+  end
+  return component
+end
+
 function M.build_install_command(adb_path, device, apk_path)
   local tool, err = ensure_tool(adb_path, "adb")
   if not tool then
@@ -110,6 +141,42 @@ function M.build_launch_command(adb_path, device, app_id, activity)
   }
 end
 
+function M.resolve_launch_activity(adb_path, device, app_id, runner)
+  local tool, err = ensure_tool(adb_path, "adb")
+  if not tool then
+    return { ok = false, error = err }
+  end
+  if not device or device == "" then
+    return { ok = false, error = "device required" }
+  end
+  if not app_id or app_id == "" then
+    return { ok = false, error = "app id required" }
+  end
+
+  local exec_runner = runner or runner_module.new()
+  local cmd = {
+    tool,
+    "-s",
+    device,
+    "shell",
+    "cmd",
+    "package",
+    "resolve-activity",
+    "--brief",
+    app_id,
+  }
+  local result = exec_runner.run(cmd)
+  if not result.ok then
+    return { ok = false, error = "resolve activity failed", result = result }
+  end
+
+  local activity = parse_component_from_resolve_output(result.stdout, app_id)
+  if not activity then
+    return { ok = false, error = "launch activity not found", result = result }
+  end
+  return { ok = true, activity = activity, result = result }
+end
+
 function M.resolve_app_id(apk_path, aapt2_path, runner)
   local tool, err = ensure_tool(aapt2_path, "aapt2")
   if not tool then
@@ -161,7 +228,20 @@ function M.deploy(opts)
     app_id = resolved.app_id
   end
 
-  local launch = M.build_launch_command(options.adb_path, options.device, app_id)
+  local launch_activity = options.activity
+  if (not launch_activity or launch_activity == "") and app_id and app_id ~= "" then
+    local resolved_activity = M.resolve_launch_activity(
+      options.adb_path,
+      options.device,
+      app_id,
+      exec_runner
+    )
+    if resolved_activity.ok then
+      launch_activity = resolved_activity.activity
+    end
+  end
+
+  local launch = M.build_launch_command(options.adb_path, options.device, app_id, launch_activity)
   if not launch.ok then
     return launch
   end

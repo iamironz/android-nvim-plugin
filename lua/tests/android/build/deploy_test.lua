@@ -152,6 +152,132 @@ local function returns_error_for_missing_aapt2_path()
   assert.contains(result.error, "aapt2", "missing aapt2 error")
 end
 
+local function resolves_launch_activity_from_package_manager_output()
+  local adb_path = make_temp_file("adb")
+  local received = { cmd = nil }
+  local stdout = table.concat(
+    {
+      "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true",
+      "com.example.app/com.example.app.MainActivity",
+    },
+    "\n"
+  )
+  local runner = {
+    run = function(cmd)
+      received.cmd = cmd
+      return { ok = true, stdout = stdout, stderr = "" }
+    end,
+  }
+
+  local result = deploy.resolve_launch_activity(
+    adb_path,
+    "emulator-5554",
+    "com.example.app",
+    runner
+  )
+
+  assert.is_true(result.ok, "resolve launch activity ok")
+  assert.eq(
+    result.activity,
+    "com.example.app/com.example.app.MainActivity",
+    "resolve launch activity"
+  )
+  assert.table_eq(
+    received.cmd,
+    adb_command(adb_path, "emulator-5554", {
+      "shell",
+      "cmd",
+      "package",
+      "resolve-activity",
+      "--brief",
+      "com.example.app",
+    }),
+    "resolve launch activity command"
+  )
+end
+
+local function deploy_uses_resolved_launch_activity_before_monkey()
+  local adb_path = make_temp_file("adb")
+  local received = {}
+  local runner = {
+    run = function(cmd)
+      table.insert(received, cmd)
+      if cmd[6] == "package" and cmd[7] == "resolve-activity" then
+        return {
+          ok = true,
+          stdout = "com.example.app/.SplashHomeActivity",
+          stderr = "",
+        }
+      end
+      return { ok = true, stdout = "", stderr = "" }
+    end,
+  }
+
+  local result = deploy.deploy({
+    adb_path = adb_path,
+    device = "emulator-5554",
+    apk_path = "/apks/app-debug.apk",
+    app_id = "com.example.app",
+    runner = runner,
+  })
+
+  assert.is_true(result.ok, "deploy with resolved launch activity ok")
+  assert.eq(#received, 3, "deploy command count")
+  assert.table_eq(
+    received[3],
+    adb_command(adb_path, "emulator-5554", {
+      "shell",
+      "am",
+      "start",
+      "-n",
+      "com.example.app/.SplashHomeActivity",
+    }),
+    "deploy resolved launch command"
+  )
+end
+
+local function deploy_falls_back_to_monkey_when_resolve_activity_missing()
+  local adb_path = make_temp_file("adb")
+  local received = {}
+  local runner = {
+    run = function(cmd)
+      table.insert(received, cmd)
+      if cmd[6] == "package" and cmd[7] == "resolve-activity" then
+        return {
+          ok = true,
+          stdout = "No activity found",
+          stderr = "",
+        }
+      end
+      return { ok = true, stdout = "", stderr = "" }
+    end,
+  }
+
+  local result = deploy.deploy({
+    adb_path = adb_path,
+    device = "emulator-5554",
+    apk_path = "/apks/app-debug.apk",
+    app_id = "com.example.app",
+    runner = runner,
+  })
+
+  assert.is_true(result.ok, "deploy fallback launch ok")
+  assert.eq(#received, 3, "deploy command count")
+  assert.table_eq(
+    received[3],
+    adb_command(adb_path, "emulator-5554", {
+      "shell",
+      "monkey",
+      "-p",
+      "com.example.app",
+      "-c",
+      "android.intent.category.LAUNCHER",
+      "1",
+    }),
+    "deploy monkey fallback command"
+  )
+end
+
 local function deploys_with_launch_fallback_without_app_id()
   local adb_path = make_temp_file("adb")
   local received = {}
@@ -206,6 +332,9 @@ function M.run()
   returns_error_for_missing_adb()
   resolves_app_id_from_aapt2_output()
   returns_error_for_missing_aapt2_path()
+  resolves_launch_activity_from_package_manager_output()
+  deploy_uses_resolved_launch_activity_before_monkey()
+  deploy_falls_back_to_monkey_when_resolve_activity_missing()
   deploys_with_launch_fallback_without_app_id()
   deploys_with_warning_when_aapt2_missing()
 end
