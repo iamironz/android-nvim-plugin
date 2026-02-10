@@ -6,6 +6,22 @@ The format is based on Keep a Changelog and this project adheres to SemVer.
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-02-10
+
+### Changed
+
+- Android deploy now resolves launcher activity via package manager before
+  falling back to `monkey` launch.
+- Run-config prefetch now reuses cached Gradle task lines to keep initial
+  snapshots aligned with runnable configurations.
+
+### Fixed
+
+- Run-config selection no longer persists non-runnable `gradle_task` entries as
+  active run targets.
+- Repeated run-config menu opens now keep prefetch snapshots and summary state
+  stable while background task discovery is in progress.
+
 ## [0.5.0] - 2026-02-07
 
 ### Added
