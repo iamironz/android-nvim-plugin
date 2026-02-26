@@ -10,6 +10,7 @@ local gradle_variants = require("android.gradle.variants")
 local gradle_workspace = require("android.gradle.workspace")
 local runner_module = require("android.command.runner")
 local jobs = require("android.command.jobs")
+local strings = require("android.utils.strings")
 
 local cache = gradle_cache.persistent()
 
@@ -81,15 +82,6 @@ local function merge_modules(preferred, modules)
   return ordered
 end
 
-local function first_nonempty_line(value)
-  for _, line in ipairs(vim.split(value or "", "\n", { plain = true })) do
-    if line ~= "" then
-      return line
-    end
-  end
-  return nil
-end
-
 local function parse_variants_from_result(result)
   if not result or not result.ok then
     return {}
@@ -109,8 +101,8 @@ local function fetch_variants_from_modules(root, runner, modules)
     if not result or not result.ok then
       had_error = true
       if not first_error then
-        local message = first_nonempty_line(result and result.stderr or "")
-          or first_nonempty_line(result and result.stdout or "")
+        local message = strings.first_nonempty_line(result and result.stderr)
+          or strings.first_nonempty_line(result and result.stdout)
           or "Gradle tasks failed"
         first_error = message
         first_task = task

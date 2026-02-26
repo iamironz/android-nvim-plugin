@@ -6,6 +6,7 @@ local gradle_variants = require("android.gradle.variants")
 local gradle_workspace = require("android.gradle.workspace")
 local run_providers = require("android.run.providers")
 local run_registry = require("android.run.registry")
+local strings = require("android.utils.strings")
 
 local state_by_root = {}
 local token_seed = 0
@@ -91,6 +92,20 @@ local function load_modules(root)
   return gradle_workspace.load_modules(root)
 end
 
+local function notify_gradle_error(result)
+  local detail = strings.first_nonempty_line(result and result.stderr)
+    or strings.first_nonempty_line(result and result.stdout)
+  local code = result and result.code or nil
+  local parts = { "Gradle tasks failed" }
+  if code then
+    parts[#parts + 1] = string.format("(exit %s)", tostring(code))
+  end
+  if detail then
+    parts[#parts + 1] = ": " .. detail
+  end
+  vim.notify(table.concat(parts, " "), vim.log.levels.WARN)
+end
+
 local function start_gradle_tasks_job(state, workspace, on_update, token)
   local root = workspace and workspace.root or nil
   local job = build_helpers.fetch_task_lines_async(root, nil, function(result)
@@ -101,6 +116,7 @@ local function start_gradle_tasks_job(state, workspace, on_update, token)
     if not result or not result.ok then
       set_status_value(state.status, "gradle_tasks", "error")
       set_status_value(state.status, "variants", "error")
+      notify_gradle_error(result)
       notify_update(state, token, on_update)
       return
     end

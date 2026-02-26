@@ -206,10 +206,84 @@ local function keeps_loading_status_when_second_start_happens_during_active_job(
   end)
 end
 
+local function gradle_error_sets_status_and_notifies()
+  local callback = nil
+  local notified = {}
+  local original_notify = vim.notify
+  vim.notify = function(msg, level)
+    notified[#notified + 1] = { msg = msg, level = level }
+  end
+
+  local stubs = {
+    ["android.actions.build_helpers"] = {
+      fetch_task_lines_async = function(_, _, on_complete)
+        callback = on_complete
+        return { ok = true, stop = function() end }
+      end,
+    },
+    ["android.gradle.workspace"] = {
+      load_modules = function()
+        return {}
+      end,
+    },
+    ["android.run.providers"] = {
+      defaults = function()
+        return {}
+      end,
+    },
+    ["android.run.registry"] = {
+      snapshot = function()
+        return { list = {}, current = nil }
+      end,
+    },
+  }
+
+  stubs_helper.with_stubs(stubs, function()
+    package.loaded["android.state.menu_prefetch"] = nil
+    local prefetch = require("android.state.menu_prefetch")
+    local workspace = { root = "/workspace-err", gradle = { root = "/workspace-err" } }
+
+    prefetch.start(workspace)
+    assert.eq(type(callback), "function", "async callback captured")
+
+    callback({
+      ok = false,
+      code = 1,
+      stdout = "",
+      stderr = "Could not determine java version\n",
+      lines = {},
+    })
+
+    local status = prefetch.status("/workspace-err")
+    local tasks_value = nil
+    local variants_value = nil
+    for _, item in ipairs(status and status.items or {}) do
+      if item.key == "gradle_tasks" then
+        tasks_value = item.value
+      end
+      if item.key == "variants" then
+        variants_value = item.value
+      end
+    end
+    assert.eq(tasks_value, "error", "gradle_tasks status is error")
+    assert.eq(variants_value, "error", "variants status is error")
+    assert.eq(#notified, 1, "one notification sent")
+    assert.eq(
+      notified[1].msg:find("Could not determine java version") ~= nil,
+      true,
+      "notification contains stderr detail"
+    )
+    assert.eq(notified[1].level, vim.log.levels.WARN, "notification level is WARN")
+  end)
+
+  vim.notify = original_notify
+end
+
 function M.run()
   cancel_stops_gradle_job()
   reuses_cached_task_lines_for_subsequent_starts()
   keeps_loading_status_when_second_start_happens_during_active_job()
+  gradle_error_sets_status_and_notifies()
 end
 
 return M
