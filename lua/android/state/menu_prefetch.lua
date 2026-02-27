@@ -23,6 +23,19 @@ local function count_value(list)
   return tostring(#list)
 end
 
+local function count_run_configs(snapshot)
+  local count = 0
+  for _, config in ipairs(snapshot and snapshot.list or {}) do
+    if config and config.type ~= "gradle_task" then
+      count = count + 1
+    end
+  end
+  if count == 0 then
+    return "none"
+  end
+  return tostring(count)
+end
+
 local function build_status_items()
   local items = {
     { key = "run_configs", label = "Run configs", value = "loading..." },
@@ -127,7 +140,7 @@ local function start_gradle_tasks_job(state, workspace, on_update, token)
     state.data.tasks = tasks
     state.data.variants = variants
     state.run_snapshot = build_run_snapshot(state, workspace, { tasks = lines })
-    set_status_value(state.status, "run_configs", count_value(state.run_snapshot.list))
+    set_status_value(state.status, "run_configs", count_run_configs(state.run_snapshot))
     set_status_value(state.status, "gradle_tasks", count_value(tasks))
     set_status_value(state.status, "variants", count_value(variants))
     notify_update(state, token, on_update)
@@ -163,7 +176,7 @@ function M.start(workspace, opts)
 
   if workspace.gradle then
     if cached_task_lines and #cached_task_lines > 0 then
-      set_status_value(state.status, "run_configs", count_value(state.run_snapshot.list))
+      set_status_value(state.status, "run_configs", count_run_configs(state.run_snapshot))
     elseif state.jobs.gradle_tasks then
       set_status_value(state.status, "run_configs", "loading...")
     elseif not state.data.tasks and not state.jobs.gradle_tasks then
@@ -172,7 +185,7 @@ function M.start(workspace, opts)
   else
     set_status_value(state.status, "gradle_tasks", "unavailable")
     set_status_value(state.status, "variants", "unavailable")
-    set_status_value(state.status, "run_configs", count_value(state.run_snapshot.list))
+    set_status_value(state.status, "run_configs", count_run_configs(state.run_snapshot))
   end
 
   return {

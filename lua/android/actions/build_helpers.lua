@@ -6,6 +6,7 @@ local gradle_build = require("android.build.gradle")
 local quickfix = require("android.build.quickfix")
 local stream = require("android.build.stream")
 local gradle_cache = require("android.gradle.cache")
+local gradle_projects = require("android.gradle.projects")
 local gradle_variants = require("android.gradle.variants")
 local gradle_workspace = require("android.gradle.workspace")
 local runner_module = require("android.command.runner")
@@ -82,11 +83,88 @@ local function merge_modules(preferred, modules)
   return ordered
 end
 
+local function split_lines(value)
+  return vim.split(value or "", "\n", { plain = true })
+end
+
+local function append_lines(target, lines)
+  for _, line in ipairs(lines or {}) do
+    target[#target + 1] = line
+  end
+end
+
+local function qualify_task_name(name, included_build)
+  if not name or name == "" or not included_build or included_build == "" then
+    return name
+  end
+  local prefix = ":" .. included_build
+  if name == prefix or name:sub(1, #prefix + 1) == prefix .. ":" then
+    return name
+  end
+  if name:sub(1, 1) == ":" then
+    return prefix .. name
+  end
+  return prefix .. ":" .. name
+end
+
+local function qualify_task_line(line, included_build)
+  if type(line) ~= "string" then
+    return line
+  end
+
+  local trimmed = strings.trim(line)
+  if trimmed == "" or trimmed:match("^%-+$") then
+    return line
+  end
+
+  local name, desc = trimmed:match("^([^%s]+)%s+%-%s*(.*)$")
+  if name and name ~= "" then
+    return string.format(
+      "%s - %s",
+      qualify_task_name(name, included_build),
+      strings.trim(desc)
+    )
+  end
+
+  if trimmed:match("%s") then
+    return line
+  end
+
+  return qualify_task_name(trimmed, included_build)
+end
+
+local function list_included_build_names(root, runner)
+  local names = {}
+  local projects_result = M.run_gradle(root, { "projects" }, runner)
+  if projects_result and projects_result.ok then
+    names = gradle_projects.parse_included_builds(split_lines(projects_result.stdout))
+  end
+
+  if #names == 0 then
+    for _, included in ipairs(gradle_workspace.load_included_builds(root) or {}) do
+      if included and included.name and included.name ~= "" then
+        names[#names + 1] = included.name
+      end
+    end
+  end
+
+  local deduped = {}
+  local seen = {}
+  for _, name in ipairs(names) do
+    if not seen[name] then
+      seen[name] = true
+      deduped[#deduped + 1] = name
+    end
+  end
+  table.sort(deduped)
+  return deduped
+end
+
 local function parse_variants_from_result(result)
   if not result or not result.ok then
     return {}
   end
-  local lines = vim.split(result.stdout or "", "\n", { plain = true })
+  local lines = split_lines(result.stdout)
   return gradle_variants.parse(lines)
 end
 
@@ -182,7 +260,18 @@ function M.fetch_task_lines(root, runner, opts)
         lines = {},
       }, false
     end
-    local lines = vim.split(result.stdout or "", "\n", { plain = true })
+
+    local lines = split_lines(result.stdout)
+    for _, included_name in ipairs(list_included_build_names(root, exec_runner)) do
+      local included_result =
+        M.run_gradle(root, { ":" .. included_name .. ":tasks", "--all" }, exec_runner)
+      if included_result and included_result.ok then
+        for _, line in ipairs(split_lines(included_result.stdout)) do
+          lines[#lines + 1] = qualify_task_line(line, included_name)
+        end
+      end
+    end
+
     return {
       ok = true,
       code = result.code,
@@ -194,23 +283,116 @@ function M.fetch_task_lines(root, runner, opts)
 end
 
 function M.fetch_task_lines_async(root, _, on_complete)
-  return M.run_gradle_async(root, { "tasks", "--all" }, {
+  local active = true
+  local current_job = nil
+  local lines = {}
+  local root_result = nil
+
+  local function finish(result)
+    if not active then
+      return
+    end
+    active = false
+    if on_complete then
+      on_complete(result)
+    end
+  end
+
+  local function run_included(index, included_names)
+    if not active then
+      return
+    end
+    if index > #included_names then
+      local base = root_result or {}
+      finish({
+        ok = true,
+        code = base.code or 0,
+        stdout = base.stdout or "",
+        stderr = base.stderr or "",
+        lines = lines,
+      })
+      return
+    end
+
+    local included_name = included_names[index]
+    current_job = M.run_gradle_async(root, { ":" .. included_name .. ":tasks", "--all" }, {
+      on_complete = function(result)
+        if not active then
+          return
+        end
+        if result and result.ok then
+          for _, line in ipairs(split_lines(result.stdout)) do
+            lines[#lines + 1] = qualify_task_line(line, included_name)
+          end
+        end
+        run_included(index + 1, included_names)
+      end,
+    })
+  end
+
+  local function resolve_included_and_continue()
+    current_job = M.run_gradle_async(root, { "projects" }, {
+      on_complete = function(result)
+        if not active then
+          return
+        end
+        local included_names = {}
+        if result and result.ok then
+          included_names = gradle_projects.parse_included_builds(split_lines(result.stdout))
+        end
+        if #included_names == 0 then
+          for _, included in ipairs(gradle_workspace.load_included_builds(root) or {}) do
+            if included and included.name and included.name ~= "" then
+              included_names[#included_names + 1] = included.name
+            end
+          end
+        end
+
+        local deduped = {}
+        local seen = {}
+        for _, name in ipairs(included_names) do
+          if not seen[name] then
+            seen[name] = true
+            deduped[#deduped + 1] = name
+          end
+        end
+        table.sort(deduped)
+
+        run_included(1, deduped)
+      end,
+    })
+  end
+
+  current_job = M.run_gradle_async(root, { "tasks", "--all" }, {
     on_complete = function(result)
-      local lines = {}
-      if result and result.ok then
-        lines = vim.split(result.stdout or "", "\n", { plain = true })
+      if not active then
+        return
       end
-      if on_complete then
-        on_complete({
+      if not result or not result.ok then
+        finish({
           ok = result and result.ok or false,
           code = result and result.code or 1,
           stdout = result and result.stdout or "",
           stderr = result and result.stderr or "",
-          lines = lines,
+          lines = {},
         })
+        return
       end
+      root_result = result
+      append_lines(lines, split_lines(result.stdout))
+      resolve_included_and_continue()
     end,
   })
+
+  return {
+    ok = current_job and current_job.ok or false,
+    stop = function()
+      active = false
+      if current_job and current_job.stop then
+        current_job.stop()
+      end
+    end,
+  }
 end
 
 function M.fetch_variants(root, runner, opts)

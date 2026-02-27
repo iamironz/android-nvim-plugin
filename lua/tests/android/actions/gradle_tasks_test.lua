@@ -216,70 +216,56 @@ local function fetches_gradle_tasks_builds_gradle_args_sets_root()
 end
 
 local function fetches_gradle_tasks_queries_included_build_tasks()
-  local received_args = nil
+  local fetch_called = 0
 
   local stubs = gradle_fetch_task_stubs({
-    ["android.gradle.workspace"] = {
-      load_modules = function()
-        return {}
-      end,
-      load_included_builds = function()
-        return { { name = "client", root = "/root/client", path = "client" } }
-      end,
-    },
     ["android.actions.build_helpers"] = {
       fetch_task_lines = function()
-        return { ok = true, lines = { "assemble - Desc" } }
-      end,
-      run_gradle = function(_, args)
-        received_args = args
-        return { ok = true, stdout = "app:assembleDebug - Desc" }
+        fetch_called = fetch_called + 1
+        return {
+          ok = true,
+          lines = {
+            "assemble - Desc",
+            ":client:app:assembleDebug - Desc",
+          },
+        }
       end,
     },
   })
 
   with_gradle_tasks(stubs, function(gradle_tasks)
     gradle_tasks.fetch_tasks("/root")
-    assert.eq(received_args[1], ":client:tasks", "included tasks arg 1")
-    assert.eq(received_args[2], "--all", "arg 2")
+    assert.eq(fetch_called, 1, "delegates line collection to build helpers")
   end)
 end
 
 local function fetches_gradle_tasks_discovers_included_builds_from_projects_output()
-  local projects_called = 0
-  local included_called = 0
+  local parser_called = 0
 
   local stubs = gradle_fetch_task_stubs({
     ["android.actions.build_helpers"] = {
       fetch_task_lines = function()
-        return { ok = true, lines = { "assemble - Desc" } }
-      end,
-      run_gradle = function(_, args)
-        if args[1] == "projects" then
-          projects_called = projects_called + 1
-          return { ok = true, stdout = "+--- Included build ':client'" }
-        end
-        if args[1] == ":client:tasks" then
-          included_called = included_called + 1
-          return { ok = true, stdout = "app:assembleDebug - Desc" }
-        end
-        return { ok = true, stdout = "" }
+        return {
+          ok = true,
+          lines = {
+            "assemble - Desc",
+            ":client:app:assembleDebug - Desc",
+          },
+        }
       end,
     },
-    ["android.gradle.workspace"] = {
-      load_modules = function()
-        return {}
-      end,
-      load_included_builds = function()
-        return {}
+    ["android.gradle.tasks"] = {
+      parse = function(lines)
+        parser_called = parser_called + 1
+        assert.eq(lines[2], ":client:app:assembleDebug - Desc", "helper-provided lines preserved")
+        return { { name = "assemble", description = "Desc" } }
       end,
     },
   })
 
   with_gradle_tasks(stubs, function(gradle_tasks)
     gradle_tasks.fetch_tasks("/root")
-    assert.eq(projects_called, 1, "projects command called")
-    assert.eq(included_called, 1, "included build tasks command called")
+    assert.eq(parser_called, 1, "task parser called once")
   end)
 end
 
@@ -287,20 +273,15 @@ local function fetches_gradle_tasks_passes_lines_to_parser()
   local received_lines = nil
 
   local stubs = gradle_fetch_task_stubs({
-    ["android.gradle.workspace"] = {
-      load_modules = function()
-        return {}
-      end,
-      load_included_builds = function()
-        return { { name = "client", root = "/root/client", path = "client" } }
-      end,
-    },
     ["android.actions.build_helpers"] = {
       fetch_task_lines = function()
-        return { ok = true, lines = { "assemble - Desc" } }
-      end,
-      run_gradle = function()
-        return { ok = true, stdout = "app:assembleDebug - Desc" }
+        return {
+          ok = true,
+          lines = {
+            "assemble - Desc",
+            ":client:app:assembleDebug - Desc",
+          },
+        }
       end,
     },
     ["android.gradle.tasks"] = {
@@ -314,14 +295,7 @@ local function fetches_gradle_tasks_passes_lines_to_parser()
   with_gradle_tasks(stubs, function(gradle_tasks)
     gradle_tasks.fetch_tasks("/root")
     assert.eq(received_lines[1], "assemble - Desc", "parsed lines")
-    local has_qualified = false
-    for _, line in ipairs(received_lines or {}) do
-      if line == ":client:app:assembleDebug - Desc" then
-        has_qualified = true
-        break
-      end
-    end
-    assert.eq(has_qualified, true, "included build task line qualified")
+    assert.eq(received_lines[2], ":client:app:assembleDebug - Desc", "included task line passed through")
   end)
 end
 

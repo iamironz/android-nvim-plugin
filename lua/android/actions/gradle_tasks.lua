@@ -3,12 +3,10 @@ local M = {}
 local context = require("android.actions.context")
 local build_helpers = require("android.actions.build_helpers")
 local gradle_cache = require("android.gradle.cache")
-local gradle_projects = require("android.gradle.projects")
 local runner_module = require("android.command.runner")
 local tasks_parser = require("android.gradle.tasks")
 local gradle_workspace = require("android.gradle.workspace")
 local stream = require("android.build.stream")
-local strings = require("android.utils.strings")
 
 local cache = gradle_cache.persistent()
 
@@ -78,92 +76,17 @@ local function build_picker(tasks, on_select, on_cancel)
   })
 end
 
-local function qualify_task_name(name, included_build)
-  if not name or name == "" or not included_build or included_build == "" then
-    return name
-  end
-  local prefix = ":" .. included_build
-  if name == prefix or name:sub(1, #prefix + 1) == prefix .. ":" then
-    return name
-  end
-  if name:sub(1, 1) == ":" then
-    return prefix .. name
-  end
-  return prefix .. ":" .. name
-end
-
-local function qualify_task_line(line, included_build)
-  if type(line) ~= "string" then
-    return line
-  end
-
-  local trimmed = strings.trim(line)
-  if trimmed == "" or trimmed:match("^%-+$") then
-    return line
-  end
-
-  local name, desc = trimmed:match("^([^%s]+)%s+%-%s*(.*)$")
-  if name and name ~= "" then
-    return string.format(
-      "%s - %s",
-      qualify_task_name(name, included_build),
-      strings.trim(desc)
-    )
-  end
-
-  if trimmed:match("%s") then
-    return line
-  end
-
-  return qualify_task_name(trimmed, included_build)
-end
-
-local function collect_task_lines(root, runner, modules)
-  local lines = {}
-  local root_result = build_helpers.fetch_task_lines(root, runner, { modules = modules })
-  if root_result and root_result.ok then
-    for _, line in ipairs(root_result.lines or {}) do
-      lines[#lines + 1] = line
-    end
-  end
-
-  local projects_result = build_helpers.run_gradle(root, { "projects" }, runner)
-  local included_names = {}
-  if projects_result and projects_result.ok then
-    included_names = gradle_projects.parse_included_builds(
-      vim.split(projects_result.stdout or "", "\n", { plain = true })
-    )
-  end
-  if #included_names == 0 and gradle_workspace and type(gradle_workspace.load_included_builds) == "function" then
-    for _, included in ipairs(gradle_workspace.load_included_builds(root) or {}) do
-      included_names[#included_names + 1] = included.name
-    end
-  end
-
-  for _, included_name in ipairs(included_names) do
-    local task_path = ":" .. included_name .. ":tasks"
-    local result = build_helpers.run_gradle(root, { task_path, "--all" }, runner)
-    if result and result.ok then
-      for _, line in ipairs(vim.split(result.stdout or "", "\n", { plain = true })) do
-        lines[#lines + 1] = qualify_task_line(line, included_name)
-      end
-    end
-  end
-
-  return lines
-end
-
 function M.fetch_tasks(root, runner)
   local exec_runner = runner or runner_module.new()
   local modules = cache.modules(root, function()
     return gradle_workspace.load_modules(root)
   end)
   return cache.tasks(root, modules, function()
-    local lines = collect_task_lines(root, exec_runner, modules)
-    if #lines == 0 then
+    local result = build_helpers.fetch_task_lines(root, exec_runner)
+    if not result or not result.ok then
       return {}, false
     end
-    return tasks_parser.parse(lines)
+    return tasks_parser.parse(result.lines or {})
   end)
 end
 

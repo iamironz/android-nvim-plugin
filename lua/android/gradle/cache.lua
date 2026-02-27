@@ -5,7 +5,7 @@ local gradle_workspace = require("android.gradle.workspace")
 
 local default_cache = state_cache.new()
 local module_stamp_limit = 200
-local cache_version = "v3"
+local cache_version = "v4"
 
 local function normalize_module_path(module)
   if not module or module == "" then

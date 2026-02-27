@@ -130,7 +130,7 @@ local function reuses_cached_task_lines_for_subsequent_starts()
         break
       end
     end
-    assert.eq(run_count, "2", "run configs count from cached snapshot")
+    assert.eq(run_count, "1", "run configs count excludes gradle task entry")
   end)
 end
 
