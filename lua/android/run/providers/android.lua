@@ -1,5 +1,6 @@
 local build_helpers = require("android.actions.build_helpers")
 local gradle_cache = require("android.gradle.cache")
+local gradle_markers = require("android.gradle.markers")
 local gradle_tasks = require("android.gradle.tasks")
 local gradle_workspace = require("android.gradle.workspace")
 local selection_defaults = require("android.state.selection_defaults")
@@ -7,7 +8,6 @@ local selection_defaults = require("android.state.selection_defaults")
 local M = {}
 
 local cache = gradle_cache.persistent()
-local module_scan_limit = 200
 
 local function normalize_module_path(module)
   if not module or module == "" then
@@ -50,33 +50,6 @@ local function read_first(paths, read)
   return nil
 end
 
-local function is_comment(line)
-  local trimmed = line:match("^%s*(.-)%s*$") or ""
-  return trimmed:match("^//") or trimmed:match("^#")
-end
-
-local function has_android_app_plugin(lines)
-  local tokens = {
-    "com.android.application",
-    "alias(libs.plugins.android.application)",
-    "libs.plugins.android.application",
-    "libs.plugins.androidApplication",
-    "androidApplication",
-    "applicationId",
-  }
-  for _, line in ipairs(lines or {}) do
-    local trimmed = line:match("^%s*(.-)%s*$") or ""
-    if not is_comment(trimmed) then
-      for _, token in ipairs(tokens) do
-        if trimmed:find(token, 1, true) then
-          return true
-        end
-      end
-    end
-  end
-  return false
-end
-
 local function detect_modules(workspace, opts)
   if not workspace or not workspace.root then
     return {}
@@ -88,6 +61,18 @@ local function detect_modules(workspace, opts)
   local read_file = options.read or default_read
   local use_gradle_tasks = options.use_gradle_tasks
   local is_fast = options.fast == true
+
+  local function scan_modules(module_list)
+    local scan = {}
+    for _, module in ipairs(module_list or {}) do
+      local lines = read_first(build_paths(workspace.root, module), read_file)
+      if gradle_markers.has_android_app(lines) then
+        scan[#scan + 1] = module
+      end
+    end
+    table.sort(scan)
+    return scan
+  end
 
   local function modules_from_tasks()
     local task_lines = options.tasks
@@ -104,46 +89,33 @@ local function detect_modules(workspace, opts)
     return gradle_tasks.android_modules(task_lines)
   end
 
-  if use_gradle_tasks then
-    local task_modules = modules_from_tasks()
-    if not task_modules then
-      return {}
-    end
-    return cache.android_modules(workspace.root, modules, function()
+  return cache.android_modules(workspace.root, modules, function()
+    if use_gradle_tasks then
+      local task_modules = modules_from_tasks()
+      if not task_modules then
+        return {}
+      end
       return task_modules
-    end)
-  end
-
-  if #modules > module_scan_limit then
-    local task_modules = modules_from_tasks()
-    if not task_modules then
-      return {}
     end
-    return cache.android_modules(workspace.root, modules, function()
-      return task_modules
-    end)
-  end
 
-  local result = cache.android_modules(workspace.root, modules, function()
-    local scan = {}
-    for _, module in ipairs(modules or {}) do
-      local lines = read_first(build_paths(workspace.root, module), read_file)
-      if has_android_app_plugin(lines) then
-        scan[#scan + 1] = module
+    if options.tasks then
+      local task_modules = modules_from_tasks()
+      if task_modules and #task_modules > 0 then
+        return task_modules
       end
     end
-    table.sort(scan)
-    return scan
-  end)
 
-  if #result == 0 then
+    local scan = scan_modules(modules)
+    if #scan > 0 then
+      return scan
+    end
+
     local task_modules = modules_from_tasks()
     if task_modules then
       return task_modules
     end
-  end
-
-  return result
+    return scan
+  end)
 end
 
 function M.detect(workspace, state, opts)

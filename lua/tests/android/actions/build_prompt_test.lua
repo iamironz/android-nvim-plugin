@@ -41,6 +41,26 @@ local function build_prompt_runs_deploy_flow()
         }
       end,
     },
+    ["android.actions.build_helpers"] = {
+      module_entries = function(modules)
+        local entries = {}
+        for _, module in ipairs(modules or {}) do
+          entries[#entries + 1] = { label = module, value = module }
+        end
+        return entries
+      end,
+      fetch_variants = function(_, _, opts)
+        assert.eq(opts and opts.module, ":app", "module-scoped variant lookup")
+        return { "debug" }
+      end,
+      run_build = function(_, _, variant, on_complete)
+        assemble_variant = variant
+        if on_complete then
+          on_complete({ ok = true, code = 0 })
+        end
+        return { ok = true }
+      end,
+    },
     ["android.command.job"] = {
       spawn = function(_, opts)
         if opts.on_stdout then
@@ -50,22 +70,6 @@ local function build_prompt_runs_deploy_flow()
           opts.on_exit(0)
         end
         return { ok = true, stop = function() end }
-      end,
-    },
-    ["android.build.gradle"] = {
-      assemble_command = function(_, _, variant)
-        assemble_variant = variant
-        return { "./gradlew", ":app:assembleDebug" }
-      end,
-    },
-    ["android.build.quickfix"] = {
-      parse = function()
-        return {}
-      end,
-    },
-    ["android.gradle.variants"] = {
-      parse = function()
-        return { "debug" }
       end,
     },
     ["android.build.apk"] = {
@@ -120,7 +124,6 @@ local function build_prompt_runs_deploy_flow()
 
   stubs_helper.with_stubs(stubs, function()
     package.loaded["android.build.stream"] = nil
-    package.loaded["android.actions.build_helpers"] = nil
     package.loaded["android.command.jobs"] = nil
     package.loaded["android.actions.build"] = nil
     local build = require("android.actions.build")

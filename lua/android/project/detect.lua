@@ -1,5 +1,6 @@
 local M = {}
 
+local gradle_markers = require("android.gradle.markers")
 local gradle_workspace = require("android.gradle.workspace")
 
 local function strip_trailing_slash(path)
@@ -63,25 +64,6 @@ local function normalize_module_path(module)
   return normalized:gsub(":", "/")
 end
 
-local function is_comment(line)
-  local trimmed = line:match("^%s*(.-)%s*$") or ""
-  return trimmed:match("^//") or trimmed:match("^#")
-end
-
-local function contains_tokens(lines, tokens)
-  for _, line in ipairs(lines or {}) do
-    local trimmed = line:match("^%s*(.-)%s*$") or ""
-    if not is_comment(trimmed) then
-      for _, token in ipairs(tokens or {}) do
-        if trimmed:find(token, 1, true) then
-          return true
-        end
-      end
-    end
-  end
-  return false
-end
-
 local function build_paths(root, module)
   local base = root
   if module and module ~= "" then
@@ -107,19 +89,32 @@ local function read_first(candidates, exists, read)
   return nil
 end
 
-local function collect_build_lines(root, modules, exists, read)
-  local lines = {}
-  local function add(file_lines)
-    for _, line in ipairs(file_lines or {}) do
-      table.insert(lines, line)
+local function detect_gradle_targets(root, modules, exists, read)
+  local has_android = false
+  local has_kmp = false
+
+  local root_lines = read_first(build_paths(root, nil), exists, read)
+  if root_lines then
+    has_android = gradle_markers.has_android(root_lines)
+    has_kmp = gradle_markers.has_kmp(root_lines)
+  end
+
+  for _, module in ipairs(modules or {}) do
+    if has_android and has_kmp then
+      break
+    end
+    local lines = read_first(build_paths(root, module), exists, read)
+    if lines then
+      if not has_android and gradle_markers.has_android(lines) then
+        has_android = true
+      end
+      if not has_kmp and gradle_markers.has_kmp(lines) then
+        has_kmp = true
+      end
     end
   end
 
-  add(read_first(build_paths(root, nil), exists, read))
-  for _, module in ipairs(modules or {}) do
-    add(read_first(build_paths(root, module), exists, read))
-  end
-  return lines
+  return has_android, has_kmp
 end
 
 local function entry_with_suffix(entries, suffix)
@@ -210,31 +205,11 @@ function M.detect(start_path, opts)
   local kmp = nil
 
   if gradle_root then
-    local lines = collect_build_lines(gradle_root, modules, exists, read)
-    if contains_tokens(lines, {
-      "com.android.application",
-      "com.android.library",
-      "alias(libs.plugins.android.application)",
-      "alias(libs.plugins.android.library)",
-      "libs.plugins.android.application",
-      "libs.plugins.android.library",
-      "libs.plugins.androidApplication",
-      "libs.plugins.androidLibrary",
-      "androidApplication",
-      "androidLibrary",
-      "namespace",
-    }) then
+    local has_android, has_kmp = detect_gradle_targets(gradle_root, modules, exists, read)
+    if has_android then
       android = { root = gradle_root, modules = modules }
     end
-    if contains_tokens(lines, {
-      "kotlin(\"multiplatform\")",
-      "kotlin-multiplatform",
-      "org.jetbrains.kotlin.multiplatform",
-      "alias(libs.plugins.kotlin.multiplatform)",
-      "libs.plugins.kotlin.multiplatform",
-      "libs.plugins.kotlinMultiplatform",
-      "kotlinMultiplatform",
-    }) then
+    if has_kmp then
       kmp = { root = gradle_root }
     end
   end

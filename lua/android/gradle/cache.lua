@@ -1,9 +1,11 @@
 local M = {}
 
 local state_cache = require("android.state.cache")
+local gradle_workspace = require("android.gradle.workspace")
 
 local default_cache = state_cache.new()
 local module_stamp_limit = 200
+local cache_version = "v3"
 
 local function normalize_module_path(module)
   if not module or module == "" then
@@ -20,7 +22,21 @@ local function normalize_module_path(module)
 end
 
 local function settings_paths(root)
-  return { root .. "/settings.gradle", root .. "/settings.gradle.kts" }
+  local paths = {
+    root .. "/settings.gradle",
+    root .. "/settings.gradle.kts",
+  }
+  local included_builds = {}
+  if gradle_workspace and type(gradle_workspace.load_included_builds) == "function" then
+    included_builds = gradle_workspace.load_included_builds(root) or {}
+  end
+  for _, included in ipairs(included_builds) do
+    if included and included.root and included.root ~= "" then
+      paths[#paths + 1] = included.root .. "/settings.gradle"
+      paths[#paths + 1] = included.root .. "/settings.gradle.kts"
+    end
+  end
+  return paths
 end
 
 local function root_build_paths(root)
@@ -63,6 +79,10 @@ local function stamp_paths(root, modules)
   return workspace_paths(root, nil)
 end
 
+local function versioned_stamp(stamp)
+  return cache_version .. "|" .. (stamp or "")
+end
+
 function M.persistent(opts)
   local options = opts or {}
   local store = state_cache.workspace_store(options)
@@ -79,7 +99,7 @@ function M.new(opts)
     if not root or root == "" then
       return loader()
     end
-    local stamp = state_cache.files_stamp(stamp_paths(root, nil), stat)
+    local stamp = versioned_stamp(state_cache.files_stamp(stamp_paths(root, nil), stat))
     return cache.fetch(root, "modules", stamp, loader)
   end
 
@@ -87,7 +107,7 @@ function M.new(opts)
     if not root or root == "" then
       return loader()
     end
-    local stamp = state_cache.files_stamp(stamp_paths(root, modules), stat)
+    local stamp = versioned_stamp(state_cache.files_stamp(stamp_paths(root, modules), stat))
     return cache.fetch(root, "tasks", stamp, loader)
   end
 
@@ -95,7 +115,7 @@ function M.new(opts)
     if not root or root == "" then
       return loader()
     end
-    local stamp = state_cache.files_stamp(stamp_paths(root, modules), stat)
+    local stamp = versioned_stamp(state_cache.files_stamp(stamp_paths(root, modules), stat))
     return cache.fetch(root, "task_lines", stamp, loader)
   end
 
@@ -103,7 +123,7 @@ function M.new(opts)
     if not root or root == "" then
       return loader()
     end
-    local stamp = state_cache.files_stamp(stamp_paths(root, modules), stat)
+    local stamp = versioned_stamp(state_cache.files_stamp(stamp_paths(root, modules), stat))
     return cache.fetch(root, "jvm_run_modules", stamp, loader)
   end
 
@@ -111,7 +131,7 @@ function M.new(opts)
     if not root or root == "" then
       return loader()
     end
-    local stamp = state_cache.files_stamp(stamp_paths(root, modules), stat)
+    local stamp = versioned_stamp(state_cache.files_stamp(stamp_paths(root, modules), stat))
     return cache.fetch(root, "variants", stamp, loader)
   end
 
@@ -119,7 +139,7 @@ function M.new(opts)
     if not root or root == "" then
       return loader()
     end
-    local stamp = state_cache.files_stamp(stamp_paths(root, modules), stat)
+    local stamp = versioned_stamp(state_cache.files_stamp(stamp_paths(root, modules), stat))
     return cache.fetch(root, "android_modules", stamp, loader)
   end
 

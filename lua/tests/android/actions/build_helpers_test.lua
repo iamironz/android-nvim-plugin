@@ -96,12 +96,42 @@ local function fetch_task_lines_async_parses_output()
   assert.eq(captured and captured.lines[1], "assemble", "task lines")
 end
 
+local function fetch_variants_uses_module_tasks_when_module_is_provided()
+  reset_config()
+  local invoked_args = nil
+  local variants = nil
+
+  with_fs_stat({ type = "directory" }, function()
+    local helpers = require("android.actions.build_helpers")
+    local original_run_gradle = helpers.run_gradle
+    helpers.run_gradle = function(_, extra_args)
+      invoked_args = extra_args
+      return {
+        ok = true,
+        code = 0,
+        stdout = table.concat({
+          "assembleDebug - Assembles debug",
+          "assembleRelease - Assembles release",
+        }, "\n"),
+        stderr = "",
+      }
+    end
+
+    variants = helpers.fetch_variants("/workspace", nil, { module = ":client:app" })
+    helpers.run_gradle = original_run_gradle
+  end)
+
+  assert.table_eq(invoked_args, { ":client:app:tasks", "--all" }, "module tasks invocation")
+  assert.table_eq(variants, { "debug", "release" }, "module-scoped variants")
+end
+
 function M.run()
   uses_configured_gradle_command_string()
   uses_configured_gradle_command_table()
   uses_wrapper_when_present()
   uses_windows_wrapper_when_present()
   fetch_task_lines_async_parses_output()
+  fetch_variants_uses_module_tasks_when_module_is_provided()
 end
 
 return M

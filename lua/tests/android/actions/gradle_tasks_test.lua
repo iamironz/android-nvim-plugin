@@ -65,13 +65,36 @@ local function gradle_fetch_task_stubs(overrides)
   local stubs = {
     ["android.state.selection_store"] = build_selection_store(),
     ["android.actions.build_helpers"] = {
+      fetch_task_lines = function()
+        return { ok = true, lines = { "assemble - Desc" } }
+      end,
       run_gradle = function()
-        return { ok = true, stdout = "assemble - Desc" }
+        return { ok = true, stdout = "" }
       end,
     },
     ["android.gradle.tasks"] = {
       parse = function()
         return { { name = "assemble", description = "Desc" } }
+      end,
+    },
+    ["android.gradle.workspace"] = {
+      load_modules = function()
+        return {}
+      end,
+      load_included_builds = function()
+        return {}
+      end,
+    },
+    ["android.gradle.cache"] = {
+      persistent = function()
+        return {
+          modules = function(_, loader)
+            return loader()
+          end,
+          tasks = function(_, _, loader)
+            return loader()
+          end,
+        }
       end,
     },
   }
@@ -106,8 +129,11 @@ local function gradle_open_stubs(overrides)
       end,
     },
     ["android.actions.build_helpers"] = {
+      fetch_task_lines = function()
+        return { ok = true, lines = { "assemble - Desc" } }
+      end,
       run_gradle = function()
-        return { ok = true, stdout = "assemble - Desc" }
+        return { ok = true, stdout = "" }
       end,
     },
     ["android.gradle.tasks"] = {
@@ -117,6 +143,9 @@ local function gradle_open_stubs(overrides)
     },
     ["android.gradle.workspace"] = {
       load_modules = function()
+        return {}
+      end,
+      load_included_builds = function()
         return {}
       end,
     },
@@ -170,9 +199,12 @@ local function fetches_gradle_tasks_builds_gradle_args_sets_root()
 
   local stubs = gradle_fetch_task_stubs({
     ["android.actions.build_helpers"] = {
-      run_gradle = function(root)
+      fetch_task_lines = function(root)
         received_root = root
-        return { ok = true, stdout = "assemble - Desc" }
+        return { ok = true, lines = { "assemble - Desc" } }
+      end,
+      run_gradle = function()
+        return { ok = true, stdout = "" }
       end,
     },
   })
@@ -183,22 +215,71 @@ local function fetches_gradle_tasks_builds_gradle_args_sets_root()
   end)
 end
 
-local function fetches_gradle_tasks_builds_gradle_args_sets_args()
+local function fetches_gradle_tasks_queries_included_build_tasks()
   local received_args = nil
 
   local stubs = gradle_fetch_task_stubs({
+    ["android.gradle.workspace"] = {
+      load_modules = function()
+        return {}
+      end,
+      load_included_builds = function()
+        return { { name = "client", root = "/root/client", path = "client" } }
+      end,
+    },
     ["android.actions.build_helpers"] = {
+      fetch_task_lines = function()
+        return { ok = true, lines = { "assemble - Desc" } }
+      end,
       run_gradle = function(_, args)
         received_args = args
-        return { ok = true, stdout = "assemble - Desc" }
+        return { ok = true, stdout = "app:assembleDebug - Desc" }
       end,
     },
   })
 
   with_gradle_tasks(stubs, function(gradle_tasks)
     gradle_tasks.fetch_tasks("/root")
-    assert.eq(received_args[1], "tasks", "arg 1")
+    assert.eq(received_args[1], ":client:tasks", "included tasks arg 1")
     assert.eq(received_args[2], "--all", "arg 2")
+  end)
+end
+
+local function fetches_gradle_tasks_discovers_included_builds_from_projects_output()
+  local projects_called = 0
+  local included_called = 0
+
+  local stubs = gradle_fetch_task_stubs({
+    ["android.actions.build_helpers"] = {
+      fetch_task_lines = function()
+        return { ok = true, lines = { "assemble - Desc" } }
+      end,
+      run_gradle = function(_, args)
+        if args[1] == "projects" then
+          projects_called = projects_called + 1
+          return { ok = true, stdout = "+--- Included build ':client'" }
+        end
+        if args[1] == ":client:tasks" then
+          included_called = included_called + 1
+          return { ok = true, stdout = "app:assembleDebug - Desc" }
+        end
+        return { ok = true, stdout = "" }
+      end,
+    },
+    ["android.gradle.workspace"] = {
+      load_modules = function()
+        return {}
+      end,
+      load_included_builds = function()
+        return {}
+      end,
+    },
+  })
+
+  with_gradle_tasks(stubs, function(gradle_tasks)
+    gradle_tasks.fetch_tasks("/root")
+    assert.eq(projects_called, 1, "projects command called")
+    assert.eq(included_called, 1, "included build tasks command called")
   end)
 end
 
@@ -206,6 +287,22 @@ local function fetches_gradle_tasks_passes_lines_to_parser()
   local received_lines = nil
 
   local stubs = gradle_fetch_task_stubs({
+    ["android.gradle.workspace"] = {
+      load_modules = function()
+        return {}
+      end,
+      load_included_builds = function()
+        return { { name = "client", root = "/root/client", path = "client" } }
+      end,
+    },
+    ["android.actions.build_helpers"] = {
+      fetch_task_lines = function()
+        return { ok = true, lines = { "assemble - Desc" } }
+      end,
+      run_gradle = function()
+        return { ok = true, stdout = "app:assembleDebug - Desc" }
+      end,
+    },
     ["android.gradle.tasks"] = {
       parse = function(lines)
         received_lines = lines
@@ -217,6 +314,14 @@ local function fetches_gradle_tasks_passes_lines_to_parser()
   with_gradle_tasks(stubs, function(gradle_tasks)
     gradle_tasks.fetch_tasks("/root")
     assert.eq(received_lines[1], "assemble - Desc", "parsed lines")
+    local has_qualified = false
+    for _, line in ipairs(received_lines or {}) do
+      if line == ":client:app:assembleDebug - Desc" then
+        has_qualified = true
+        break
+      end
+    end
+    assert.eq(has_qualified, true, "included build task line qualified")
   end)
 end
 
@@ -383,7 +488,8 @@ end
 
 function M.run()
   fetches_gradle_tasks_builds_gradle_args_sets_root()
-  fetches_gradle_tasks_builds_gradle_args_sets_args()
+  fetches_gradle_tasks_queries_included_build_tasks()
+  fetches_gradle_tasks_discovers_included_builds_from_projects_output()
   fetches_gradle_tasks_passes_lines_to_parser()
   fetches_gradle_tasks_returns_parsed_tasks()
   run_task_builds_command_args_sets_root()

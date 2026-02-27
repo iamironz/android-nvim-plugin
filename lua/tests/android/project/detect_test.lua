@@ -39,6 +39,43 @@ local function detects_gradle_android_kmp_workspace()
   assert.is_true(result.kmp ~= nil, "kmp detected")
 end
 
+local function detects_android_in_composite_workspace()
+  local detect = require("android.project.detect")
+  local exists = function(path)
+    local matches = {
+      ["/repo/settings.gradle"] = true,
+      ["/repo/build.gradle"] = true,
+      ["/repo/client/settings.gradle"] = true,
+      ["/repo/client/app/build.gradle"] = true,
+    }
+    return matches[path] or false
+  end
+  local read = function(path)
+    if path == "/repo/settings.gradle" then
+      return { "includeBuild(\"client\")" }
+    end
+    if path == "/repo/build.gradle" then
+      return { "tasks.register(\"assembleAll\")" }
+    end
+    if path == "/repo/client/settings.gradle" then
+      return { "include(\":app\")" }
+    end
+    if path == "/repo/client/app/build.gradle" then
+      return { "plugins {", "id 'com.android.application'", "}" }
+    end
+    return nil
+  end
+
+  local result = detect.detect("/repo", { exists = exists, read = read, scandir = function()
+    return {}
+  end })
+
+  assert.eq(result.root, "/repo", "composite root")
+  assert.table_eq(result.modules, { ":client:app" }, "composite modules")
+  assert.is_true(result.gradle ~= nil, "composite gradle detected")
+  assert.is_true(result.android ~= nil, "composite android detected")
+end
+
 local function detects_android_kmp_with_version_catalog_aliases()
   local detect = require("android.project.detect")
   local exists = function(path)
@@ -429,6 +466,7 @@ end
 
 function M.run()
   detects_gradle_android_kmp_workspace()
+  detects_android_in_composite_workspace()
   detects_android_kmp_with_version_catalog_aliases()
   detects_android_with_dotted_alias()
   detects_android_from_namespace_only()

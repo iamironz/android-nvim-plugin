@@ -17,8 +17,8 @@ local discovery = require("android.sdk.discovery")
 local wait = require("android.actions.wait")
 local gradle_variants = require("android.gradle.variants")
 
-local function prompt_for_variant(root, runner, default_variant, on_selected, opts)
-  local variants = build_helpers.fetch_variants(root, runner)
+local function prompt_for_variant(root, module, runner, default_variant, on_selected, opts)
+  local variants = build_helpers.fetch_variants(root, runner, { module = module })
   if #variants == 0 then
     vim.notify("No Gradle variants found", vim.log.levels.WARN)
     return
@@ -110,11 +110,16 @@ function M.select_variant(opts)
   local runner = runner_module.new()
   local state = context.load_state(workspace.root)
   local build = defaults.build_defaults(state)
+  local module = build.module
+  if not module or module == "" then
+    module = action_defaults.select_module(workspace.modules)
+  end
 
-  prompt_for_variant(workspace.root, runner, build.variant, function(variant)
+  prompt_for_variant(workspace.root, module, runner, build.variant, function(variant)
     local state = context.load_state(workspace.root)
     local build = defaults.build_defaults(state)
-    local next_state = defaults.apply_build_defaults(state, build.module, variant)
+    local next_module = module or build.module
+    local next_state = defaults.apply_build_defaults(state, next_module, variant)
     context.save_state(workspace.root, next_state)
     vim.notify("Default variant set to " .. variant, vim.log.levels.INFO)
   end, opts)
@@ -135,7 +140,7 @@ function M.build_prompt(opts)
 
   local open_module_picker
   local function open_variant_picker(module)
-    prompt_for_variant(workspace.root, runner, build.variant, function(variant)
+    prompt_for_variant(workspace.root, module, runner, build.variant, function(variant)
       local state = context.load_state(workspace.root)
       build_and_deploy(workspace, module, variant, runner, state)
     end, {
@@ -170,7 +175,7 @@ local function resolve_variant(root, state, runner, module)
     return build.variant
   end
   local default_hint = gradle_variants.detect_default_variant(root, module)
-  local variants = build_helpers.fetch_variants(root, runner)
+  local variants = build_helpers.fetch_variants(root, runner, { module = module })
   return action_defaults.select_variant(variants, default_hint)
 end
 

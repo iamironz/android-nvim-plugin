@@ -70,12 +70,12 @@ local function resolve_module(workspace, state)
   return action_defaults.select_module(workspace.modules)
 end
 
-local function resolve_variant(root, state, runner)
+local function resolve_variant(root, state, runner, module)
   local build = state_defaults.build_defaults(state)
   if build.variant and build.variant ~= "" then
     return build.variant
   end
-  local variants = build_helpers.fetch_variants(root, runner)
+  local variants = build_helpers.fetch_variants(root, runner, { module = module })
   return action_defaults.select_variant(variants)
 end
 
@@ -93,7 +93,7 @@ local function resolve_build_selection(workspace, state, runner)
     return nil, nil, state
   end
 
-  local variant = resolve_variant(workspace.root, state, runner)
+  local variant = resolve_variant(workspace.root, state, runner, module)
   if not variant or variant == "" then
     return module, nil, state
   end

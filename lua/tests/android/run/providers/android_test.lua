@@ -82,7 +82,7 @@ local function ignores_android_modules_with_namespace_only()
   assert.eq(#list, 0, "no android config")
 end
 
-local function detects_android_modules_from_application_id()
+local function ignores_modules_with_application_id_only()
   local list = detect_with({
     modules = { ":app" },
     read = function()
@@ -96,7 +96,7 @@ local function detects_android_modules_from_application_id()
     end,
   })
 
-  assert_android_config(list, { module = ":app" })
+  assert.eq(#list, 0, "applicationId alone should not classify Android app plugin")
 end
 
 local function detects_android_modules_from_gradle_tasks_when_build_scan_empty()
@@ -146,24 +146,27 @@ local function skips_build_file_scan_when_use_gradle_tasks_enabled()
   assert_android_config(list, { module = ":app" })
 end
 
-local function prefers_tasks_for_large_workspaces()
+local function scans_large_workspaces_using_plugin_detection()
   local read_calls = 0
   local modules = {}
   for i = 1, 201 do
     modules[#modules + 1] = string.format(":module%03d", i)
   end
+  modules[#modules + 1] = ":special:launcher"
 
   local list = detect_with({
     modules = modules,
-    read = function()
+    read = function(path)
       read_calls = read_calls + 1
-      return { "plugins", "com.android.application" }
+      if path:match("special/launcher/build%.gradle") then
+        return { "plugins", "com.android.application" }
+      end
+      return nil
     end,
-    tasks = { ":app:assembleDebug - Assembles" },
   })
 
-  assert.eq(read_calls, 0, "build files not read")
-  assert_android_config(list, { module = ":app" })
+  assert.eq(read_calls > 0, true, "large workspace build files are scanned")
+  assert_android_config(list, { module = ":special:launcher" })
 end
 
 local function fast_mode_skips_gradle_task_fallback()
@@ -249,13 +252,13 @@ function M.run()
   detects_android_modules_from_build_files()
   detects_android_modules_from_dotted_alias()
   ignores_android_modules_with_namespace_only()
-  detects_android_modules_from_application_id()
+  ignores_modules_with_application_id_only()
   detects_android_modules_from_gradle_tasks_when_build_scan_empty()
   detects_android_modules_from_gradle_tasks_when_forced()
   skips_build_file_scan_when_use_gradle_tasks_enabled()
   fast_mode_skips_gradle_task_fallback()
   caches_android_module_build_scan_results()
-  prefers_tasks_for_large_workspaces()
+  scans_large_workspaces_using_plugin_detection()
 end
 
 return M

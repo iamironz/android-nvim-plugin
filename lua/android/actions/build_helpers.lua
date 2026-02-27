@@ -213,8 +213,26 @@ function M.fetch_task_lines_async(root, _, on_complete)
   })
 end
 
-function M.fetch_variants(root, runner)
+function M.fetch_variants(root, runner, opts)
   local exec_runner = runner or runner_module.new()
+  local options = opts or {}
+  local module = options.module
+  if module and module ~= "" then
+    local result = M.run_gradle(root, { module .. ":tasks", "--all" }, exec_runner)
+    local variants = parse_variants_from_result(result)
+    if #variants > 0 then
+      return variants
+    end
+    local fallback, had_error = fetch_variants_from_modules(root, exec_runner, { module })
+    if #fallback > 0 then
+      return fallback
+    end
+    if (result and result.ok == false) or had_error then
+      return fallback
+    end
+    return fallback
+  end
+
   local modules = cache.modules(root, function()
     return gradle_workspace.load_modules(root)
   end)

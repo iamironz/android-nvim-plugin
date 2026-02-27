@@ -20,7 +20,7 @@ local function parse_line(line)
     return nil
   end
 
-  local name, desc = trimmed:match("^([^%s]+)%s*%-%s*(.*)$")
+  local name, desc = trimmed:match("^([^%s]+)%s+%-%s*(.*)$")
   if name and name ~= "" then
     return { name = name, description = trim(desc) }
   end
