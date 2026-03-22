@@ -3,6 +3,7 @@ local M = {}
 local apk = require("android.build.apk")
 local deploy = require("android.build.deploy")
 local defaults = require("android.actions.defaults")
+local project_config = require("android.project.config")
 
 local function normalize_module_path(module)
   if not module or module == "" then
@@ -150,6 +151,18 @@ local function default_module(modules)
   return defaults.select_module(modules)
 end
 
+local function configured_package(root, options)
+  local data = project_config.load(root, {
+    config_path = options.config_path,
+    read = options.read_config,
+  })
+  local app = data.app or {}
+  if type(app.package) ~= "string" or app.package == "" then
+    return nil
+  end
+  return app.package
+end
+
 function M.resolve_default_package(opts)
   local options = opts or {}
   local saved = options.saved_package
@@ -161,6 +174,11 @@ function M.resolve_default_package(opts)
   local root = options.root or workspace.root
   if not root or root == "" then
     return nil
+  end
+
+  local configured = configured_package(root, options)
+  if configured then
+    return configured
   end
 
   local app_id = resolve_apk_package(root, workspace.modules, options)

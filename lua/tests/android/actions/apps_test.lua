@@ -1,167 +1,15 @@
 local M = {}
 
 local assert = require("tests.helpers.assert")
-local stubs_helper = require("tests.helpers.stubs")
-
-local function merge_stubs(base, extra)
-  for key, value in pairs(extra or {}) do
-    base[key] = value
-  end
-  return base
-end
-
-local function with_apps_stubs(stubs, fn)
-  stubs_helper.with_stubs(stubs, function()
-    package.loaded["android.actions.apps"] = nil
-    fn(require("android.actions.apps"))
-  end)
-end
-
-local function build_context_stubs(state, save_state)
-  return {
-    workspace = function()
-      return { root = "/workspace", modules = { ":app" } }
-    end,
-    load_state = function()
-      return state
-    end,
-    save_state = function(_, next_state)
-      state = next_state
-      if save_state then
-        save_state(next_state)
-      end
-      return true
-    end,
-  }
-end
-
-local function build_sdk_stubs(adb_path)
-  return {
-    new = function()
-      return {
-        tools = function()
-          return { adb = adb_path or "/sdk/adb" }
-        end,
-        aapt2 = function()
-          return nil
-        end,
-      }
-    end,
-  }
-end
-
-local function build_runner_stubs(run)
-  return {
-    new = function()
-      return {
-        run = function(cmd)
-          if run then
-            return run(cmd)
-          end
-          return { ok = true, stdout = "", stderr = "" }
-        end,
-      }
-    end,
-  }
-end
-
-local function build_adb_stubs(serial)
-  return {
-    list = function()
-      return { { serial = serial or "device-1", state = "device" } }
-    end,
-  }
-end
-
-local function build_default_stubs(state, opts)
-  local options = opts or {}
-  local stubs = {
-    ["android.actions.context"] = build_context_stubs(state, options.save_state),
-    ["android.sdk.discovery"] = build_sdk_stubs(options.adb_path),
-    ["android.command.runner"] = build_runner_stubs(options.runner_run),
-    ["android.devices.adb"] = build_adb_stubs(options.device_serial),
-  }
-  return merge_stubs(stubs, options.extra)
-end
-
-local function with_default_apps(state, opts, fn)
-  local stubs = build_default_stubs(state, opts)
-  with_apps_stubs(stubs, fn)
-end
-
-local function make_runner_capture()
-  local command = nil
-  local called = false
-  return {
-    run = function(cmd)
-      command = cmd
-      called = true
-      return { ok = true, stdout = "", stderr = "" }
-    end,
-    command = function()
-      return command
-    end,
-    called = function()
-      return called
-    end,
-  }
-end
-
-local function make_state_saver()
-  local saved_state = nil
-  return {
-    save = function(next_state)
-      saved_state = next_state
-    end,
-    state = function()
-      return saved_state
-    end,
-  }
-end
-
-local function make_apk_resolver_capture(path)
-  local received_module = nil
-  local received_variant = nil
-  return {
-    stub = {
-      resolve_apk_path = function(_, module, variant)
-        received_module = module
-        received_variant = variant
-        return { ok = true, path = path or "/tmp/app-debug.apk" }
-      end,
-    },
-    module = function()
-      return received_module
-    end,
-    variant = function()
-      return received_variant
-    end,
-  }
-end
+local support = require("tests.android.actions.apps_test_support")
 
 local function run_install_and_capture(state)
-  local apk_resolver = make_apk_resolver_capture("/tmp/app-debug.apk")
+  local apk_resolver = support.make_apk_resolver_capture("/tmp/app-debug.apk")
 
-  with_default_apps(state, {
+  support.with_default_apps(state, {
     extra = {
       ["android.build.apk"] = apk_resolver.stub,
-      ["android.build.deploy"] = {
-        build_install_command = function(adb_path, device, apk_path)
-          return {
-            ok = true,
-            cmd = {
-              adb_path,
-              "-s",
-              device,
-              "install",
-              "-r",
-              "-d",
-              "-t",
-              apk_path,
-            },
-          }
-        end,
-      },
+      ["android.build.deploy"] = support.build_install_command_stub(),
     },
   }, function(apps)
     apps.install()
@@ -278,34 +126,18 @@ local function install_uses_build_variant()
 end
 
 local function install_runs_adb_install_command()
-  local runner = make_runner_capture()
+  local runner = support.make_runner_capture()
   local state = {
     build = { module = ":app", variant = "debug" },
     device = { serial = "device-1" },
   }
-  local apk_resolver = make_apk_resolver_capture("/tmp/app-debug.apk")
+  local apk_resolver = support.make_apk_resolver_capture("/tmp/app-debug.apk")
 
-  with_default_apps(state, {
+  support.with_default_apps(state, {
     runner_run = runner.run,
     extra = {
       ["android.build.apk"] = apk_resolver.stub,
-      ["android.build.deploy"] = {
-        build_install_command = function(adb_path, device, apk_path)
-          return {
-            ok = true,
-            cmd = {
-              adb_path,
-              "-s",
-              device,
-              "install",
-              "-r",
-              "-d",
-              "-t",
-              apk_path,
-            },
-          }
-        end,
-      },
+      ["android.build.deploy"] = support.build_install_command_stub(),
     },
   }, function(apps)
     apps.install()
@@ -327,12 +159,83 @@ local function install_runs_adb_install_command()
   )
 end
 
+local function install_reuses_prefetch_cache_for_variant_lookup()
+  local fetch_variant_opts = nil
+  local state = {
+    build = { module = ":app" },
+    device = { serial = "device-1" },
+  }
+  local apk_resolver = support.make_apk_resolver_capture("/tmp/app-debug.apk")
+
+  support.with_default_apps(state, {
+    extra = {
+      ["android.actions.build_helpers"] = {
+        fetch_variants = function(_, _, opts)
+          fetch_variant_opts = opts
+          return { "debug" }
+        end,
+      },
+      ["android.build.apk"] = apk_resolver.stub,
+      ["android.build.deploy"] = support.build_install_command_stub(),
+      ["android.state.menu_prefetch"] = {
+        cached_variant_fetch_opts = function(_, module)
+          return {
+            module = module,
+            tasks = { ":app:assembleDebug - Assembles" },
+            snapshot = {
+              android = {
+                modules = { ":app" },
+                by_module = {
+                  [":app"] = { module = ":app", variants = { "debug" } },
+                },
+              },
+            },
+          }
+        end,
+      },
+    },
+  }, function(apps)
+    apps.install()
+  end)
+
+  assert.eq(fetch_variant_opts.tasks[1], ":app:assembleDebug - Assembles", "cached task lines reused")
+  assert.eq(fetch_variant_opts.snapshot.android.modules[1], ":app", "cached snapshot reused")
+end
+
+local function install_without_prefetch_cache_keeps_variant_lookup_compatible()
+  local fetch_variant_opts = nil
+  local state = {
+    build = { module = ":app" },
+    device = { serial = "device-1" },
+  }
+  local apk_resolver = support.make_apk_resolver_capture("/tmp/app-debug.apk")
+
+  support.with_default_apps(state, {
+    extra = {
+      ["android.actions.build_helpers"] = {
+        fetch_variants = function(_, _, opts)
+          fetch_variant_opts = opts
+          return { "debug" }
+        end,
+      },
+      ["android.build.apk"] = apk_resolver.stub,
+      ["android.build.deploy"] = support.build_install_command_stub(),
+    },
+  }, function(apps)
+    apps.install()
+  end)
+
+  assert.eq(fetch_variant_opts.module, ":app", "module still passed")
+  assert.eq(fetch_variant_opts.tasks, nil, "no cached task lines when unavailable")
+  assert.eq(fetch_variant_opts.snapshot, nil, "no cached snapshot when unavailable")
+end
+
 local function clear_data_runs_pm_clear_command()
-  local runner = make_runner_capture()
+  local runner = support.make_runner_capture()
   local state = { device = { serial = "device-1" } }
 
   with_input_value("com.example.app", function()
-    with_default_apps(state, {
+    support.with_default_apps(state, {
       runner_run = runner.run,
       extra = {
         ["android.logcat.package"] = {
@@ -362,11 +265,11 @@ local function clear_data_runs_pm_clear_command()
 end
 
 local function clear_data_persists_package()
-  local state_saver = make_state_saver()
+  local state_saver = support.make_state_saver()
   local state = { device = { serial = "device-1" } }
 
   with_input_value("com.example.app", function()
-    with_default_apps(state, {
+    support.with_default_apps(state, {
       save_state = state_saver.save,
       extra = {
         ["android.logcat.package"] = {
@@ -384,14 +287,14 @@ local function clear_data_persists_package()
 end
 
 local function uninstall_runs_adb_uninstall_command()
-  local runner = make_runner_capture()
+  local runner = support.make_runner_capture()
   local state = {
     device = { serial = "device-1" },
     app = { package = "com.saved" },
   }
 
   with_input_error(function()
-    with_default_apps(state, {
+    support.with_default_apps(state, {
       runner_run = runner.run,
       extra = {
         ["android.logcat.package"] = {
@@ -413,14 +316,14 @@ local function uninstall_runs_adb_uninstall_command()
 end
 
 local function uninstall_persists_package()
-  local state_saver = make_state_saver()
+  local state_saver = support.make_state_saver()
   local state = {
     device = { serial = "device-1" },
     app = { package = "com.saved" },
   }
 
   with_input_error(function()
-    with_default_apps(state, {
+    support.with_default_apps(state, {
       save_state = state_saver.save,
       extra = {
         ["android.logcat.package"] = {
@@ -445,6 +348,8 @@ function M.run()
   install_uses_build_module()
   install_uses_build_variant()
   install_runs_adb_install_command()
+  install_reuses_prefetch_cache_for_variant_lookup()
+  install_without_prefetch_cache_keeps_variant_lookup_compatible()
   clear_data_runs_pm_clear_command()
   clear_data_persists_package()
   uninstall_runs_adb_uninstall_command()

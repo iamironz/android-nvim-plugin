@@ -125,6 +125,100 @@ local function fetch_variants_uses_module_tasks_when_module_is_provided()
   assert.table_eq(variants, { "debug", "release" }, "module-scoped variants")
 end
 
+local function fetch_variants_prefers_snapshot_from_root_task_lines_for_module_lookup()
+  reset_config()
+  local invoked = false
+  local variants = nil
+
+  with_fs_stat({ type = "directory" }, function()
+    local helpers = require("android.actions.build_helpers")
+    local original_run_gradle = helpers.run_gradle
+    helpers.run_gradle = function()
+      invoked = true
+      return {
+        ok = true,
+        code = 0,
+        stdout = "",
+        stderr = "",
+      }
+    end
+
+    variants = helpers.fetch_variants("/workspace", nil, {
+      module = ":client:app",
+      tasks = {
+        ":client:app:assembleDebug - Assembles debug",
+        ":other:assembleRelease - Assembles release",
+      },
+    })
+    helpers.run_gradle = original_run_gradle
+  end)
+
+  assert.eq(invoked, false, "root task snapshot avoids module gradle query")
+  assert.table_eq(variants, { "debug" }, "module variants from normalized snapshot")
+end
+
+local function fetch_workspace_variants_merges_root_and_snapshot_variants()
+  reset_config()
+  local stubs = {
+    ["android.gradle.cache"] = {
+      persistent = function()
+        return {
+          modules = function(_, loader)
+            return loader()
+          end,
+          variants = function(_, _, loader)
+            return loader()
+          end,
+          task_lines = function(_, _, loader)
+            return loader()
+          end,
+        }
+      end,
+    },
+    ["android.gradle.workspace"] = {
+      load_modules = function()
+        return { ":app" }
+      end,
+      load_included_builds = function()
+        return {}
+      end,
+    },
+  }
+
+  local variants = nil
+  with_fs_stat({ type = "directory" }, function()
+    stubs_helper.with_stubs(stubs, function()
+      package.loaded["android.actions.build_helpers"] = nil
+      local helpers = require("android.actions.build_helpers")
+      local original_run_gradle = helpers.run_gradle
+      helpers.run_gradle = function(_, extra_args)
+        if extra_args[1] == "tasks" then
+          return {
+            ok = true,
+            code = 0,
+            stdout = table.concat({
+              "assembleDebug - Assembles debug",
+              ":app:assembleRelease - Assembles release",
+            }, "\n"),
+            stderr = "",
+          }
+        end
+        return {
+          ok = true,
+          code = 0,
+          stdout = "",
+          stderr = "",
+        }
+      end
+
+      variants = helpers.fetch_variants("/workspace")
+      helpers.run_gradle = original_run_gradle
+    end)
+  end)
+
+  assert.table_eq(variants, { "debug", "release" }, "workspace variants keep root and module tasks")
+end
+
 function M.run()
   uses_configured_gradle_command_string()
   uses_configured_gradle_command_table()
@@ -132,6 +226,8 @@ function M.run()
   uses_windows_wrapper_when_present()
   fetch_task_lines_async_parses_output()
   fetch_variants_uses_module_tasks_when_module_is_provided()
+  fetch_variants_prefers_snapshot_from_root_task_lines_for_module_lookup()
+  fetch_workspace_variants_merges_root_and_snapshot_variants()
 end
 
 return M

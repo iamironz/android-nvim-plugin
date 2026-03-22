@@ -1,6 +1,7 @@
 local M = {}
 
 local config = require("android.config")
+local project_config = require("android.project.config")
 
 local function normalize_module_path(module)
   if not module or module == "" then
@@ -165,47 +166,37 @@ local function normalize_module_name(module)
   return module
 end
 
-local function is_absolute_path(path)
-  if not path or path == "" then
-    return false
+local function configured_overrides(root, opts)
+  local data = project_config.load(root, {
+    config_path = opts and opts.config_path or nil,
+    read = opts and opts.read or nil,
+  })
+  local build = data.build or {}
+  if type(build.apk_overrides) ~= "table" then
+    return {}
   end
-  if path:sub(1, 1) == "/" then
-    return true
-  end
-  if path:match("^%a:[\\/]") then
-    return true
-  end
-  return false
+  return build.apk_overrides
 end
 
-local function resolve_override_path(root, path)
-  if not path or path == "" then
-    return nil
-  end
-  if is_absolute_path(path) then
-    return path
-  end
-  if not root or root == "" then
-    return path
-  end
-  return root .. "/" .. path
-end
-
-local function resolve_override(opts, module, variant)
-  local overrides = opts and opts.overrides or nil
-  if not overrides then
-    return nil
-  end
-
+local function resolve_override(root, opts, module, variant)
   local normalized_module = normalize_module_name(module)
-  for _, entry in ipairs(overrides or {}) do
-    if entry and entry.path and entry.path ~= "" then
-      local entry_module = normalize_module_name(entry.module or module)
-      if entry_module == normalized_module and entry.variant == variant then
-        return entry.path
+  local override_sets = {}
+  if opts and opts.overrides then
+    override_sets[#override_sets + 1] = opts.overrides
+  end
+  override_sets[#override_sets + 1] = configured_overrides(root, opts)
+
+  for _, overrides in ipairs(override_sets) do
+    for _, entry in ipairs(overrides or {}) do
+      if entry and entry.path and entry.path ~= "" then
+        local entry_module = normalize_module_name(entry.module or module)
+        if entry_module == normalized_module and entry.variant == variant then
+          return project_config.resolve_path(root, entry.path)
+        end
       end
     end
   end
+
   return nil
 end
 
@@ -228,10 +219,18 @@ function M.list_apk_paths(root, module, variant, opts)
     return { ok = false, error = "variant required" }
   end
 
-  local override_path = resolve_override_path(root, resolve_override(opts, module, variant))
+  local override_path = resolve_override(root, opts, module, variant)
   if override_path then
     if not is_file(override_path) then
-      return { ok = false, error = "override apk not found" }
+      return {
+        ok = false,
+        error = string.format(
+          "override apk not found for %s %s: %s",
+          module,
+          variant,
+          override_path
+        ),
+      }
     end
     return { ok = true, apks = { override_path } }
   end

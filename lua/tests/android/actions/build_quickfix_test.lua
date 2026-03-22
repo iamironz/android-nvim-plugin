@@ -222,6 +222,7 @@ local function run_failed_build()
       package.loaded["android.actions.build_helpers"] = nil
       package.loaded["android.command.jobs"] = nil
       package.loaded["android.actions.build"] = nil
+      package.loaded["android.actions.build_selection"] = nil
       local build = require("android.actions.build")
       build.build_default()
     end)

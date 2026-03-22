@@ -57,6 +57,7 @@ end
 
 local function reuses_cached_task_lines_for_subsequent_starts()
   local callback = nil
+  local detect_opts_log = {}
   local stubs = {
     ["android.actions.build_helpers"] = {
       fetch_task_lines_async = function(_, _, on_complete)
@@ -87,7 +88,8 @@ local function reuses_cached_task_lines_for_subsequent_starts()
     ["android.run.registry"] = {
       snapshot = function(_, opts)
         local detect_opts = opts and opts.detect_opts or {}
-        if detect_opts.tasks then
+        detect_opts_log[#detect_opts_log + 1] = detect_opts
+        if detect_opts.snapshot and detect_opts.snapshot.android then
           return {
             list = {
               { id = "android:app", type = "android", target = "android" },
@@ -122,6 +124,16 @@ local function reuses_cached_task_lines_for_subsequent_starts()
 
     local second = prefetch.start(workspace)
     assert.eq(#(second.run_snapshot and second.run_snapshot.list or {}), 2, "second start uses cached task lines")
+    assert.eq(
+      detect_opts_log[2] and detect_opts_log[2].snapshot and detect_opts_log[2].snapshot.android.modules[1],
+      ":app",
+      "async completion passes normalized snapshot"
+    )
+    assert.eq(
+      detect_opts_log[3] and detect_opts_log[3].snapshot and detect_opts_log[3].snapshot.android.modules[1],
+      ":app",
+      "cached start reuses normalized snapshot"
+    )
     local status = prefetch.status("/workspace")
     local run_count = nil
     for _, item in ipairs(status and status.items or {}) do
@@ -206,6 +218,61 @@ local function keeps_loading_status_when_second_start_happens_during_active_job(
   end)
 end
 
+local function exposes_cached_normalized_snapshot()
+  local callback = nil
+  local stubs = {
+    ["android.actions.build_helpers"] = {
+      fetch_task_lines_async = function(_, _, on_complete)
+        callback = on_complete
+        return { ok = true, stop = function() end }
+      end,
+    },
+    ["android.gradle.workspace"] = {
+      load_modules = function()
+        return {}
+      end,
+    },
+    ["android.gradle.tasks"] = {
+      parse = function()
+        return { { name = ":app:assembleDebug", description = "" } }
+      end,
+    },
+    ["android.gradle.variants"] = {
+      parse = function()
+        return { "debug" }
+      end,
+    },
+    ["android.run.providers"] = {
+      defaults = function()
+        return {}
+      end,
+    },
+    ["android.run.registry"] = {
+      snapshot = function()
+        return { list = {}, current = nil }
+      end,
+    },
+  }
+
+  stubs_helper.with_stubs(stubs, function()
+    package.loaded["android.state.menu_prefetch"] = nil
+    local prefetch = require("android.state.menu_prefetch")
+    local workspace = { root = "/workspace-snapshot", gradle = { root = "/workspace-snapshot" } }
+
+    prefetch.start(workspace)
+    assert.eq(type(callback), "function", "async callback captured")
+
+    callback({
+      ok = true,
+      lines = { ":app:assembleDebug - Assembles" },
+    })
+
+    local snapshot = prefetch.cached_snapshot("/workspace-snapshot")
+    assert.eq(snapshot.android.modules[1], ":app", "cached snapshot exposes normalized modules")
+    assert.eq(snapshot.android.by_module[":app"].variants[1], "debug", "cached snapshot exposes variants")
+  end)
+end
+
 local function gradle_error_sets_status_and_notifies()
   local callback = nil
   local notified = {}
@@ -283,6 +350,7 @@ function M.run()
   cancel_stops_gradle_job()
   reuses_cached_task_lines_for_subsequent_starts()
   keeps_loading_status_when_second_start_happens_during_active_job()
+  exposes_cached_normalized_snapshot()
   gradle_error_sets_status_and_notifies()
 end
 

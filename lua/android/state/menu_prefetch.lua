@@ -1,6 +1,7 @@
 local M = {}
 
 local build_helpers = require("android.actions.build_helpers")
+local gradle_snapshot = require("android.gradle.snapshot")
 local gradle_tasks = require("android.gradle.tasks")
 local gradle_variants = require("android.gradle.variants")
 local gradle_workspace = require("android.gradle.workspace")
@@ -66,6 +67,45 @@ local function build_run_snapshot(state, workspace, detect_opts)
     detect_opts = detect_opts,
     persist = false,
   })
+end
+
+local function variants_from_snapshot(snapshot)
+  local by_module = snapshot and snapshot.android and snapshot.android.by_module or nil
+  if not by_module then
+    return {}
+  end
+
+  local seen = {}
+  for _, entry in pairs(by_module) do
+    for _, variant in ipairs(entry and entry.variants or {}) do
+      seen[variant] = true
+    end
+  end
+
+  local variants = {}
+  for variant in pairs(seen) do
+    variants[#variants + 1] = variant
+  end
+  table.sort(variants)
+  return variants
+end
+
+local function cached_detect_opts(state, fast)
+  local detect_opts = {}
+  local task_lines = state and state.data and state.data.task_lines or nil
+  local snapshot = state and state.data and state.data.snapshot or nil
+
+  if task_lines and #task_lines > 0 then
+    detect_opts.tasks = task_lines
+  end
+  if snapshot then
+    detect_opts.snapshot = snapshot
+  end
+  if fast and not detect_opts.tasks then
+    detect_opts.fast = true
+  end
+
+  return detect_opts
 end
 
 local function notify_update(state, token, on_update)
@@ -134,12 +174,20 @@ local function start_gradle_tasks_job(state, workspace, on_update, token)
       return
     end
     local lines = result.lines or {}
+    local snapshot = gradle_snapshot.parse(lines)
     local tasks = gradle_tasks.parse(lines)
-    local variants = gradle_variants.parse(lines)
+    local variants = variants_from_snapshot(snapshot)
+    if #variants == 0 then
+      variants = gradle_variants.parse(lines)
+    end
     state.data.task_lines = lines
+    state.data.snapshot = snapshot
     state.data.tasks = tasks
     state.data.variants = variants
-    state.run_snapshot = build_run_snapshot(state, workspace, { tasks = lines })
+    state.run_snapshot = build_run_snapshot(state, workspace, {
+      tasks = lines,
+      snapshot = snapshot,
+    })
     set_status_value(state.status, "run_configs", count_run_configs(state.run_snapshot))
     set_status_value(state.status, "gradle_tasks", count_value(tasks))
     set_status_value(state.status, "variants", count_value(variants))
@@ -160,8 +208,14 @@ function M.start(workspace, opts)
   state.token = token
 
   local cached_task_lines = state.data.task_lines
+  local cached_snapshot = state.data.snapshot
   if cached_task_lines and #cached_task_lines > 0 then
-    state.run_snapshot = build_run_snapshot(state, workspace, { tasks = cached_task_lines })
+    state.run_snapshot = build_run_snapshot(state, workspace, {
+      tasks = cached_task_lines,
+      snapshot = cached_snapshot,
+    })
+  elseif cached_snapshot then
+    state.run_snapshot = build_run_snapshot(state, workspace, cached_detect_opts(state, true))
   else
     state.run_snapshot = build_run_snapshot(state, workspace, { fast = true })
   end
@@ -208,6 +262,31 @@ end
 function M.cached_tasks(root)
   local state = root and state_by_root[root] or nil
   return state and state.data and state.data.tasks or nil
+end
+
+function M.cached_task_lines(root)
+  local state = root and state_by_root[root] or nil
+  return state and state.data and state.data.task_lines or nil
+end
+
+function M.cached_snapshot(root)
+  local state = root and state_by_root[root] or nil
+  return state and state.data and state.data.snapshot or nil
+end
+
+function M.cached_variant_fetch_opts(root, module)
+  local opts = { module = module }
+  local task_lines = M.cached_task_lines(root)
+  local snapshot = M.cached_snapshot(root)
+
+  if task_lines and #task_lines > 0 then
+    opts.tasks = task_lines
+  end
+  if snapshot then
+    opts.snapshot = snapshot
+  end
+
+  return opts
 end
 
 function M.cached_variants(root)

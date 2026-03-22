@@ -5,6 +5,7 @@ local adb = require("android.devices.adb")
 local discovery = require("android.sdk.discovery")
 local action_defaults = require("android.actions.defaults")
 local state_defaults = require("android.state.selection_defaults")
+local menu_prefetch = require("android.state.menu_prefetch")
 local build_helpers = require("android.actions.build_helpers")
 local apk = require("android.build.apk")
 local deploy = require("android.build.deploy")
@@ -75,7 +76,11 @@ local function resolve_variant(root, state, runner, module)
   if build.variant and build.variant ~= "" then
     return build.variant
   end
-  local variants = build_helpers.fetch_variants(root, runner, { module = module })
+  local variants = build_helpers.fetch_variants(
+    root,
+    runner,
+    menu_prefetch.cached_variant_fetch_opts(root, module)
+  )
   return action_defaults.select_variant(variants)
 end
 

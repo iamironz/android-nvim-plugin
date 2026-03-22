@@ -1,5 +1,6 @@
 local build_helpers = require("android.actions.build_helpers")
 local gradle_cache = require("android.gradle.cache")
+local gradle_snapshot = require("android.gradle.snapshot")
 local gradle_markers = require("android.gradle.markers")
 local gradle_tasks = require("android.gradle.tasks")
 local gradle_workspace = require("android.gradle.workspace")
@@ -50,6 +51,20 @@ local function read_first(paths, read)
   return nil
 end
 
+local function modules_from_snapshot(snapshot)
+  local modules = snapshot and snapshot.android and snapshot.android.modules or nil
+  if not modules or #modules == 0 then
+    return nil
+  end
+
+  local result = {}
+  for _, module in ipairs(modules) do
+    result[#result + 1] = module
+  end
+  table.sort(result)
+  return result
+end
+
 local function detect_modules(workspace, opts)
   if not workspace or not workspace.root then
     return {}
@@ -61,6 +76,9 @@ local function detect_modules(workspace, opts)
   local read_file = options.read or default_read
   local use_gradle_tasks = options.use_gradle_tasks
   local is_fast = options.fast == true
+  local has_stronger_discovery = options.snapshot ~= nil
+    or options.tasks ~= nil
+    or use_gradle_tasks == true
 
   local function scan_modules(module_list)
     local scan = {}
@@ -86,10 +104,21 @@ local function detect_modules(workspace, opts)
       end
       task_lines = task_result.lines
     end
+
+    local snapshot_modules = modules_from_snapshot(gradle_snapshot.parse(task_lines))
+    if snapshot_modules then
+      return snapshot_modules
+    end
+
     return gradle_tasks.android_modules(task_lines)
   end
 
-  return cache.android_modules(workspace.root, modules, function()
+  local function detect_cached_or_uncached()
+    local snapshot_modules = modules_from_snapshot(options.snapshot)
+    if snapshot_modules then
+      return snapshot_modules
+    end
+
     if use_gradle_tasks then
       local task_modules = modules_from_tasks()
       if not task_modules then
@@ -115,7 +144,13 @@ local function detect_modules(workspace, opts)
       return task_modules
     end
     return scan
-  end)
+  end
+
+  if has_stronger_discovery then
+    return detect_cached_or_uncached()
+  end
+
+  return cache.android_modules(workspace.root, modules, detect_cached_or_uncached)
 end
 
 function M.detect(workspace, state, opts)

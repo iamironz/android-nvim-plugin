@@ -6,6 +6,9 @@ local runner_module = require("android.command.runner")
 local picker = require("android.ui.picker")
 local panel = require("android.ui.panel")
 local defaults = require("android.state.selection_defaults")
+local menu_prefetch = require("android.state.menu_prefetch")
+local build_selection = require("android.actions.build_selection")
+local build_run_sync = require("android.actions.build_run_sync")
 local context = require("android.actions.context")
 local action_defaults = require("android.actions.defaults")
 local logcat = require("android.actions.logcat")
@@ -18,7 +21,11 @@ local wait = require("android.actions.wait")
 local gradle_variants = require("android.gradle.variants")
 
 local function prompt_for_variant(root, module, runner, default_variant, on_selected, opts)
-  local variants = build_helpers.fetch_variants(root, runner, { module = module })
+  local variants = build_helpers.fetch_variants(
+    root,
+    runner,
+    menu_prefetch.cached_variant_fetch_opts(root, module)
+  )
   if #variants == 0 then
     vim.notify("No Gradle variants found", vim.log.levels.WARN)
     return
@@ -92,6 +99,7 @@ function M.select_module(opts)
     local state = context.load_state(workspace.root)
     local build = defaults.build_defaults(state)
     local next_state = defaults.apply_build_defaults(state, module, build.variant)
+    next_state = build_run_sync.apply(workspace, next_state, module)
     context.save_state(workspace.root, next_state)
     local label = module
     if label == "" or label == nil then
@@ -159,32 +167,6 @@ function M.build_prompt(opts)
   end
 
   open_module_picker()
-end
-
-local function resolve_module(workspace, state)
-  local build = defaults.build_defaults(state)
-  if build.module and build.module ~= "" then
-    return build.module
-  end
-  return action_defaults.select_module(workspace.modules)
-end
-
-local function resolve_variant(root, state, runner, module)
-  local build = defaults.build_defaults(state)
-  if build.variant and build.variant ~= "" then
-    return build.variant
-  end
-  local default_hint = gradle_variants.detect_default_variant(root, module)
-  local variants = build_helpers.fetch_variants(root, runner, { module = module })
-  return action_defaults.select_variant(variants, default_hint)
-end
-
-local function apply_build_defaults(state, module, variant)
-  local build = defaults.build_defaults(state)
-  if build.module == module and build.variant == variant then
-    return state, false
-  end
-  return defaults.apply_build_defaults(state, module, variant), true
 end
 
 local function resolve_device_serial(devices, saved_serial)
@@ -287,24 +269,6 @@ local function resolve_device_for_deploy(runner, tools, state)
   return serial, next_state
 end
 
-local function resolve_build_selection(workspace, state, runner)
-  local module = resolve_module(workspace, state)
-  if not module or module == "" then
-    return nil, nil, state
-  end
-
-  local variant = resolve_variant(workspace.root, state, runner, module)
-  if not variant or variant == "" then
-    return module, nil, state
-  end
-
-  local next_state, changed = apply_build_defaults(state, module, variant)
-  if changed then
-    return module, variant, next_state
-  end
-  return module, variant, state
-end
-
 local function deploy_after_build(workspace, module, variant, runner, state)
   local sdk = discovery.new({ root = workspace.root })
   local tools = sdk.tools()
@@ -372,7 +336,10 @@ function M.build_default()
 
   local runner = runner_module.new()
   local state = context.load_state(workspace.root)
-  local module, variant, next_state = resolve_build_selection(workspace, state, runner)
+  local module, variant, next_state = build_selection.resolve(workspace, state, runner, {
+    fetch_variants = build_helpers.fetch_variants,
+    default_hint = gradle_variants.detect_default_variant,
+  })
   if not module then
     notify_missing_modules()
     return
@@ -403,7 +370,10 @@ function M.build_pure()
 
   local runner = runner_module.new()
   local state = context.load_state(workspace.root)
-  local module, variant, next_state = resolve_build_selection(workspace, state, runner)
+  local module, variant, next_state = build_selection.resolve(workspace, state, runner, {
+    fetch_variants = build_helpers.fetch_variants,
+    default_hint = gradle_variants.detect_default_variant,
+  })
   if not module then
     notify_missing_modules()
     return
@@ -432,7 +402,10 @@ function M.list_apks(opts)
 
   local runner = runner_module.new()
   local state = context.load_state(workspace.root)
-  local module, variant, next_state = resolve_build_selection(workspace, state, runner)
+  local module, variant, next_state = build_selection.resolve(workspace, state, runner, {
+    fetch_variants = build_helpers.fetch_variants,
+    default_hint = gradle_variants.detect_default_variant,
+  })
   if not module then
     notify_missing_modules()
   end

@@ -120,12 +120,18 @@ local function build_prompt_runs_deploy_flow()
       trim_body = function() end,
       close = function() end,
     },
+    ["android.state.menu_prefetch"] = {
+      cached_variant_fetch_opts = function(_, module)
+        return { module = module }
+      end,
+    },
   }
 
   stubs_helper.with_stubs(stubs, function()
     package.loaded["android.build.stream"] = nil
     package.loaded["android.command.jobs"] = nil
     package.loaded["android.actions.build"] = nil
+    package.loaded["android.actions.build_selection"] = nil
     local build = require("android.actions.build")
     build.build_prompt()
     assert.is_true(deploy_called, "deploy called")
@@ -174,10 +180,16 @@ local function build_prompt_variant_cancel_reopens_module_picker()
         end
       end,
     },
+    ["android.state.menu_prefetch"] = {
+      cached_variant_fetch_opts = function(_, module)
+        return { module = module }
+      end,
+    },
   }
 
   stubs_helper.with_stubs(stubs, function()
     package.loaded["android.actions.build"] = nil
+    package.loaded["android.actions.build_selection"] = nil
     local build = require("android.actions.build")
     build.build_prompt()
 
@@ -219,10 +231,16 @@ local function build_prompt_module_cancel_calls_on_cancel()
         end
       end,
     },
+    ["android.state.menu_prefetch"] = {
+      cached_variant_fetch_opts = function(_, module)
+        return { module = module }
+      end,
+    },
   }
 
   stubs_helper.with_stubs(stubs, function()
     package.loaded["android.actions.build"] = nil
+    package.loaded["android.actions.build_selection"] = nil
     local build = require("android.actions.build")
     build.build_prompt({
       on_cancel = function()

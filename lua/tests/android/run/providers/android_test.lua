@@ -208,6 +208,76 @@ local function fast_mode_skips_gradle_task_fallback()
   assert.eq(fetch_calls, 0, "fast mode should not fetch gradle task list")
 end
 
+local function detects_android_modules_from_snapshot_before_build_scan()
+  local read_calls = 0
+  local list = detect_with({
+    modules = { ":app", ":androidApp" },
+    snapshot = {
+      android = {
+        modules = { ":androidApp" },
+        by_module = {
+          [":androidApp"] = { variants = { "debug" } },
+        },
+      },
+    },
+    read = function()
+      read_calls = read_calls + 1
+      return { "plugins", "com.android.application" }
+    end,
+  })
+
+  assert.eq(read_calls, 0, "snapshot skips build scan")
+  assert_android_config(list, { module = ":androidApp" })
+end
+
+local function fast_mode_uses_snapshot_without_gradle_fetch()
+  local fetch_calls = 0
+  local stubs = {
+    ["android.actions.build_helpers"] = {
+      fetch_task_lines = function()
+        fetch_calls = fetch_calls + 1
+        return {}
+      end,
+    },
+    ["android.gradle.cache"] = {
+      persistent = function()
+        return {
+          modules = function(_, loader)
+            return loader()
+          end,
+          android_modules = function(_, _, loader)
+            return loader()
+          end,
+        }
+      end,
+    },
+  }
+
+  stubs_helper.with_stubs(stubs, function()
+    package.loaded["android.run.providers.android"] = nil
+    local fast_provider = require("android.run.providers.android")
+    local list = fast_provider.detect(default_workspace("/workspace/fast-snapshot"), default_state(), {
+      modules = { ":androidApp" },
+      snapshot = {
+        android = {
+          modules = { ":androidApp" },
+          by_module = {
+            [":androidApp"] = { variants = { "debug" } },
+          },
+        },
+      },
+      read = function()
+        error("build scan should not run when snapshot is available")
+      end,
+      fast = true,
+    })
+
+    assert_android_config(list, { module = ":androidApp", variant = "debug" })
+  end)
+
+  assert.eq(fetch_calls, 0, "fast snapshot should not fetch gradle task list")
+end
+
 local function caches_android_module_build_scan_results()
   local read_calls = 0
   local stubs = {
@@ -248,6 +318,111 @@ local function caches_android_module_build_scan_results()
   end)
 end
 
+local function snapshot_detection_bypasses_stale_build_scan_cache()
+  local stubs = {
+    ["android.gradle.cache"] = {
+      persistent = function()
+        local cached = nil
+        return {
+          modules = function(_, loader)
+            return loader()
+          end,
+          android_modules = function(_, _, loader)
+            if cached then
+              return cached
+            end
+            cached = loader()
+            return cached
+          end,
+        }
+      end,
+    },
+  }
+
+  stubs_helper.with_stubs(stubs, function()
+    package.loaded["android.run.providers.android"] = nil
+    local cached_provider = require("android.run.providers.android")
+    local root = "/workspace/stale-cache-snapshot"
+
+    local first = cached_provider.detect(default_workspace(root), default_state(), {
+      modules = { ":build-logic:convention", ":app" },
+      read = function(path)
+        if path:match("build%-logic/convention") then
+          return { "plugins", "com.android.application" }
+        end
+        return nil
+      end,
+    })
+    assert_android_config(first, { module = ":build-logic:convention" })
+
+    local second = cached_provider.detect(default_workspace(root), default_state(), {
+      modules = { ":build-logic:convention", ":app" },
+      snapshot = {
+        android = {
+          modules = { ":app" },
+          by_module = {
+            [":app"] = { variants = { "debug" } },
+          },
+        },
+      },
+      read = function()
+        error("snapshot discovery should bypass cached build scan")
+      end,
+    })
+
+    assert_android_config(second, { module = ":app" })
+  end)
+end
+
+local function task_detection_bypasses_stale_build_scan_cache()
+  local stubs = {
+    ["android.gradle.cache"] = {
+      persistent = function()
+        local cached = nil
+        return {
+          modules = function(_, loader)
+            return loader()
+          end,
+          android_modules = function(_, _, loader)
+            if cached then
+              return cached
+            end
+            cached = loader()
+            return cached
+          end,
+        }
+      end,
+    },
+  }
+
+  stubs_helper.with_stubs(stubs, function()
+    package.loaded["android.run.providers.android"] = nil
+    local cached_provider = require("android.run.providers.android")
+    local root = "/workspace/stale-cache-tasks"
+
+    local first = cached_provider.detect(default_workspace(root), default_state(), {
+      modules = { ":build-logic:convention", ":app" },
+      read = function(path)
+        if path:match("build%-logic/convention") then
+          return { "plugins", "com.android.application" }
+        end
+        return nil
+      end,
+    })
+    assert_android_config(first, { module = ":build-logic:convention" })
+
+    local second = cached_provider.detect(default_workspace(root), default_state(), {
+      modules = { ":build-logic:convention", ":app" },
+      tasks = { ":app:assembleDebug - Assembles" },
+      read = function()
+        error("task discovery should bypass cached build scan")
+      end,
+    })
+
+    assert_android_config(second, { module = ":app" })
+  end)
+end
+
 function M.run()
   detects_android_modules_from_build_files()
   detects_android_modules_from_dotted_alias()
@@ -257,7 +432,11 @@ function M.run()
   detects_android_modules_from_gradle_tasks_when_forced()
   skips_build_file_scan_when_use_gradle_tasks_enabled()
   fast_mode_skips_gradle_task_fallback()
+  detects_android_modules_from_snapshot_before_build_scan()
+  fast_mode_uses_snapshot_without_gradle_fetch()
   caches_android_module_build_scan_results()
+  snapshot_detection_bypasses_stale_build_scan_cache()
+  task_detection_bypasses_stale_build_scan_cache()
   scans_large_workspaces_using_plugin_detection()
 end
 

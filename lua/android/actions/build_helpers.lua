@@ -5,9 +5,9 @@ local action_defaults = require("android.actions.defaults")
 local gradle_build = require("android.build.gradle")
 local quickfix = require("android.build.quickfix")
 local stream = require("android.build.stream")
+local build_variants = require("android.actions.build_variants")
 local gradle_cache = require("android.gradle.cache")
 local gradle_projects = require("android.gradle.projects")
-local gradle_variants = require("android.gradle.variants")
 local gradle_workspace = require("android.gradle.workspace")
 local runner_module = require("android.command.runner")
 local jobs = require("android.command.jobs")
@@ -65,22 +65,6 @@ function M.append_args(base, extra)
     table.insert(out, value)
   end
   return out
-end
-
-local function merge_modules(preferred, modules)
-  local ordered = {}
-  local seen = {}
-  if preferred and preferred ~= "" then
-    table.insert(ordered, preferred)
-    seen[preferred] = true
-  end
-  for _, module in ipairs(modules or {}) do
-    if module and module ~= "" and not seen[module] then
-      table.insert(ordered, module)
-      seen[module] = true
-    end
-  end
-  return ordered
 end
 
 local function split_lines(value)
@@ -158,48 +142,6 @@ local function list_included_build_names(root, runner)
   end
   table.sort(deduped)
   return deduped
-end
-
-local function parse_variants_from_result(result)
-  if not result or not result.ok then
-    return {}
-  end
-  local lines = split_lines(result.stdout)
-  return gradle_variants.parse(lines)
-end
-
-local function fetch_variants_from_modules(root, runner, modules)
-  local preferred = action_defaults.select_module(modules)
-  local first_error = nil
-  local first_task = nil
-  local had_error = false
-  for _, module in ipairs(merge_modules(preferred, modules)) do
-    local task = module .. ":tasks"
-    local result = M.run_gradle(root, { task, "--all" }, runner)
-    if not result or not result.ok then
-      had_error = true
-      if not first_error then
-        local message = strings.first_nonempty_line(result and result.stderr)
-          or strings.first_nonempty_line(result and result.stdout)
-          or "Gradle tasks failed"
-        first_error = message
-        first_task = task
-      end
-    else
-      local variants = parse_variants_from_result(result)
-      if #variants > 0 then
-        return variants, had_error
-      end
-    end
-  end
-  if first_error then
-    local task_label = first_task or "module tasks"
-    vim.notify(
-      string.format("Gradle tasks failed for %s: %s", task_label, first_error),
-      vim.log.levels.WARN
-    )
-  end
-  return {}, had_error
 end
 
 function M.build_command(root, extra_args)
@@ -400,12 +342,24 @@ function M.fetch_variants(root, runner, opts)
   local options = opts or {}
   local module = options.module
   if module and module ~= "" then
+    if options.tasks or options.snapshot then
+      local cached = build_variants.from_task_lines(options.tasks, module, options.snapshot)
+      if #cached > 0 then
+        return cached
+      end
+    end
+
     local result = M.run_gradle(root, { module .. ":tasks", "--all" }, exec_runner)
-    local variants = parse_variants_from_result(result)
+    local variants = build_variants.from_task_lines(split_lines(result and result.stdout), module)
     if #variants > 0 then
       return variants
     end
-    local fallback, had_error = fetch_variants_from_modules(root, exec_runner, { module })
+    local fallback, had_error = build_variants.fetch_from_modules(
+      root,
+      exec_runner,
+      { module },
+      M.run_gradle
+    )
     if #fallback > 0 then
       return fallback
     end
@@ -425,11 +379,16 @@ function M.fetch_variants(root, runner, opts)
       { modules = modules }
     )
     local lines = (task_result and task_result.lines) or {}
-    local variants = gradle_variants.parse(lines)
+    local variants = build_variants.from_task_lines(lines)
     if #variants > 0 then
       return variants
     end
-    local fallback, had_error = fetch_variants_from_modules(root, exec_runner, modules)
+    local fallback, had_error = build_variants.fetch_from_modules(
+      root,
+      exec_runner,
+      modules,
+      M.run_gradle
+    )
     if #fallback > 0 then
       return fallback
     end

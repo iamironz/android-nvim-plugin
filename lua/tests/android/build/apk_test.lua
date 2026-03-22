@@ -14,6 +14,14 @@ local function make_temp_dir()
   return dir
 end
 
+local function write_config(root, relative_path, payload)
+  local path = root .. "/" .. relative_path
+  local parent = vim.fn.fnamemodify(path, ":h")
+  vim.fn.mkdir(parent, "p")
+  vim.fn.writefile(vim.split(payload, "\n", { plain = true }), path)
+  return path
+end
+
 local function make_apk_dir(root, module, variant, subdir)
   local dir = root
     .. "/"
@@ -181,6 +189,27 @@ local function resolves_relative_override_path()
   assert.eq(result.path, override_apk, "override path")
 end
 
+local function loads_override_path_from_shared_project_config()
+  local root = make_temp_dir()
+  local override_dir = root .. "/artifacts"
+  vim.fn.mkdir(override_dir, "p")
+
+  local override_apk = make_apk(override_dir, "app-debug.apk", os.time())
+  write_config(
+    root,
+    ".android.nvim.json",
+    string.format(
+      [[{"build":{"apk_overrides":[{"module":":app","variant":"debug","path":"artifacts/%s"}]}}]],
+      vim.fn.fnamemodify(override_apk, ":t")
+    )
+  )
+
+  local result = apk.resolve_apk_path(root, ":app", "debug")
+
+  assert.is_true(result.ok, "shared override ok")
+  assert.eq(result.path, override_apk, "shared override path")
+end
+
 local function returns_error_when_override_missing()
   local root = make_temp_dir()
   make_apk_dir(root, ":app", "debug")
@@ -193,6 +222,7 @@ local function returns_error_when_override_missing()
 
   assert.eq(result.ok, false, "override missing ok")
   assert.contains(result.error, "override", "override missing error")
+  assert.contains(result.error, "missing.apk", "override missing path")
 end
 
 local function lists_module_apks_recursively()
@@ -278,6 +308,7 @@ function M.run()
   falls_back_to_module_scan_when_config_enabled()
   prefers_override_path_for_variant()
   resolves_relative_override_path()
+  loads_override_path_from_shared_project_config()
   returns_error_when_override_missing()
   lists_module_apks_recursively()
   resolves_bare_build_type_with_flavors()

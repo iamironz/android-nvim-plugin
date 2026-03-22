@@ -29,6 +29,7 @@ local function build_select_module_passes_default()
 
   stubs_helper.with_stubs(stubs, function()
     package.loaded["android.actions.build"] = nil
+    package.loaded["android.actions.build_selection"] = nil
     local build = require("android.actions.build")
     build.select_module()
 
@@ -74,6 +75,7 @@ local function build_select_variant_passes_default()
 
   stubs_helper.with_stubs(stubs, function()
     package.loaded["android.actions.build"] = nil
+    package.loaded["android.actions.build_selection"] = nil
     local build = require("android.actions.build")
     build.select_variant()
 

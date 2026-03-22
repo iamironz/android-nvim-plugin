@@ -121,12 +121,18 @@ local function build_default_state(options)
         return true
       end,
     },
+    ["android.state.menu_prefetch"] = {
+      cached_variant_fetch_opts = function(_, module)
+        return { module = module }
+      end,
+    },
   }
 
   local output = nil
   with_vim_notify_stubs(function()
     stubs_helper.with_stubs(stubs, function()
       package.loaded["android.actions.build"] = nil
+      package.loaded["android.actions.build_selection"] = nil
       local build = require("android.actions.build")
       build.build_default()
     end)
@@ -145,6 +151,7 @@ local function pure_build_runs_assemble_only()
   local build_module = nil
   local build_variant = nil
   local deploy_called = false
+  local fetch_variant_opts = nil
 
   local stubs = {
     ["android.actions.context"] = {
@@ -152,7 +159,7 @@ local function pure_build_runs_assemble_only()
         return { root = "/workspace", modules = { ":app" } }
       end,
       load_state = function()
-        return { build = { module = ":app", variant = "debug" } }
+        return { build = { module = ":app" } }
       end,
       save_state = function()
         return true
@@ -164,6 +171,10 @@ local function pure_build_runs_assemble_only()
         build_module = module
         build_variant = variant
         return { ok = true }
+      end,
+      fetch_variants = function(_, _, opts)
+        fetch_variant_opts = opts
+        return { "debug" }
       end,
     },
     ["android.command.runner"] = {
@@ -177,16 +188,139 @@ local function pure_build_runs_assemble_only()
         return { ok = true }
       end,
     },
+    ["android.state.menu_prefetch"] = {
+      cached_variant_fetch_opts = function(_, module)
+        return {
+          module = module,
+          tasks = { ":app:assembleDebug - Assembles" },
+          snapshot = {
+            android = {
+              modules = { ":app" },
+              by_module = {
+                [":app"] = { module = ":app", variants = { "debug" } },
+              },
+            },
+          },
+        }
+      end,
+    },
   }
 
   stubs_helper.with_stubs(stubs, function()
     package.loaded["android.actions.build"] = nil
+    package.loaded["android.actions.build_selection"] = nil
     local build = require("android.actions.build")
     build.build_pure()
     assert.eq(build_root, "/workspace", "build root")
     assert.eq(build_module, ":app", "build module")
     assert.eq(build_variant, "debug", "build variant")
+    assert.eq(fetch_variant_opts.tasks[1], ":app:assembleDebug - Assembles", "cached task lines reused")
+    assert.eq(fetch_variant_opts.snapshot.android.modules[1], ":app", "cached snapshot reused")
     assert.is_true(not deploy_called, "deploy not called")
+  end)
+end
+
+local function build_default_without_prefetch_cache_keeps_variant_lookup_compatible()
+  local fetch_variant_opts = nil
+
+  local stubs = {
+    ["android.actions.context"] = {
+      workspace = function()
+        return { root = "/workspace", modules = { ":app" } }
+      end,
+      load_state = function()
+        return { build = { module = ":app" } }
+      end,
+      save_state = function()
+        return true
+      end,
+    },
+    ["android.actions.build_helpers"] = {
+      fetch_variants = function(_, _, opts)
+        fetch_variant_opts = opts
+        return { "debug" }
+      end,
+      run_build = function(_, _, _, on_complete)
+        if on_complete then
+          on_complete({ ok = true })
+        end
+        return { ok = true }
+      end,
+    },
+    ["android.actions.defaults"] = {
+      select_device_serial = function()
+        return "device-1"
+      end,
+      select_avd_name = function()
+        return nil
+      end,
+      select_module = function()
+        return ":app"
+      end,
+      select_variant = function(variants)
+        return variants[1]
+      end,
+    },
+    ["android.command.runner"] = {
+      new = function()
+        return { run = function() return { ok = true, stdout = "", stderr = "" } end }
+      end,
+    },
+    ["android.build.apk"] = {
+      resolve_apk_path = function()
+        return { ok = true, path = "/tmp/app.apk" }
+      end,
+    },
+    ["android.build.deploy"] = {
+      deploy = function()
+        return { ok = false, error = "skip deploy" }
+      end,
+    },
+    ["android.devices.adb"] = {
+      list = function()
+        return { { serial = "device-1", state = "device" } }
+      end,
+    },
+    ["android.sdk.discovery"] = {
+      new = function()
+        return {
+          tools = function()
+            return { adb = "/bin/adb", emulator = "/bin/emulator" }
+          end,
+          aapt2 = function()
+            return "/bin/aapt2"
+          end,
+        }
+      end,
+    },
+    ["android.actions.wait"] = {
+      wait_for_boot = function()
+        return { ok = true, booted = true }
+      end,
+    },
+    ["android.actions.logcat"] = {
+      open = function() end,
+    },
+    ["android.ui.panel"] = {
+      close = function() end,
+    },
+    ["android.state.menu_prefetch"] = {
+      cached_variant_fetch_opts = function(_, module)
+        return { module = module }
+      end,
+    },
+  }
+
+  with_vim_notify_stubs(function()
+    stubs_helper.with_stubs(stubs, function()
+      package.loaded["android.actions.build"] = nil
+      package.loaded["android.actions.build_selection"] = nil
+      local build = require("android.actions.build")
+      build.build_default()
+      assert.eq(fetch_variant_opts.module, ":app", "module still passed")
+      assert.eq(fetch_variant_opts.tasks, nil, "no cached task lines when unavailable")
+      assert.eq(fetch_variant_opts.snapshot, nil, "no cached snapshot when unavailable")
+    end)
   end)
 end
 
@@ -223,6 +357,7 @@ local function clean_runs_gradle_clean()
   with_vim_notify_stubs(function(state)
     stubs_helper.with_stubs(stubs, function()
       package.loaded["android.actions.build"] = nil
+      package.loaded["android.actions.build_selection"] = nil
       local build = require("android.actions.build")
       build.clean()
       assert.eq(received_root, "/workspace", "root")
@@ -260,6 +395,7 @@ end
 
 function M.run()
   pure_build_runs_assemble_only()
+  build_default_without_prefetch_cache_keeps_variant_lookup_compatible()
   clean_runs_gradle_clean()
   deploy_success_opens_logcat_and_updates_package()
   deploy_failure_does_not_open_logcat()

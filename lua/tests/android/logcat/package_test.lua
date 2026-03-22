@@ -3,6 +3,18 @@ local M = {}
 local assert = require("tests.helpers.assert")
 local logcat_package = require("android.logcat.package")
 
+local function make_temp_dir()
+  local dir = vim.fn.tempname()
+  vim.fn.mkdir(dir, "p")
+  return dir
+end
+
+local function write_config(root, payload)
+  local path = root .. "/.android.nvim.json"
+  vim.fn.writefile(vim.split(payload, "\n", { plain = true }), path)
+  return path
+end
+
 local function returns_saved_package_and_skips_manifest()
   local called = { exists = false, readfile = false }
   local result = logcat_package.resolve_default_package({
@@ -88,6 +100,33 @@ local function falls_back_to_manifest_when_apk_resolution_fails()
   assert.eq(called.resolve, true, "attempts apk resolve")
   assert.eq(called.exists, true, "checks manifest")
   assert.eq(called.readfile, true, "reads manifest")
+end
+
+local function prefers_shared_project_package_before_apk_or_manifest()
+  local root = make_temp_dir()
+  write_config(root, [[{"app":{"package":"com.example.configured"}}]])
+
+  local called = { list_apks = false, exists = false, readfile = false }
+  local result = logcat_package.resolve_default_package({
+    workspace = { root = root, modules = { ":app" } },
+    list_apks = function()
+      called.list_apks = true
+      return { ok = true, apks = { { path = "/apks/app-debug.apk" } } }
+    end,
+    exists = function()
+      called.exists = true
+      return true
+    end,
+    readfile = function()
+      called.readfile = true
+      return { "<manifest package=\"com.example.manifest\" />" }
+    end,
+  })
+
+  assert.eq(result, "com.example.configured", "shared project package")
+  assert.eq(called.list_apks, false, "does not inspect apk")
+  assert.eq(called.exists, false, "does not inspect manifest")
+  assert.eq(called.readfile, false, "does not read manifest")
 end
 
 local function resolves_manifest_package_for_default_module()
@@ -238,6 +277,7 @@ function M.run()
   returns_saved_package_and_skips_manifest()
   resolves_app_id_from_apk_and_skips_manifest()
   falls_back_to_manifest_when_apk_resolution_fails()
+  prefers_shared_project_package_before_apk_or_manifest()
   resolves_manifest_package_for_default_module()
   returns_nil_when_manifest_missing()
   falls_back_to_namespace_when_manifest_missing()

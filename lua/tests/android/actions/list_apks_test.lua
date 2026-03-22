@@ -38,6 +38,7 @@ local function passes_ignore_patterns_override()
 
   stubs_helper.with_stubs(stubs, function()
     package.loaded["android.actions.build"] = nil
+    package.loaded["android.actions.build_selection"] = nil
     local build = require("android.actions.build")
     build.list_apks()
 
@@ -87,6 +88,7 @@ local function list_apks_calls_on_cancel_when_picker_cancels()
 
   stubs_helper.with_stubs(stubs, function()
     package.loaded["android.actions.build"] = nil
+    package.loaded["android.actions.build_selection"] = nil
     local build = require("android.actions.build")
     build.list_apks({
       on_cancel = function()
@@ -136,6 +138,7 @@ local function forwards_file_ignore_patterns_override()
 
   stubs_helper.with_stubs(stubs, function()
     package.loaded["android.actions.build"] = nil
+    package.loaded["android.actions.build_selection"] = nil
     local build = require("android.actions.build")
     build.list_apks({ file_ignore_patterns = ignore_patterns })
 
