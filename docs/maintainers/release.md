@@ -15,10 +15,11 @@ Use SemVer:
 ## Pre-Release Checklist
 
 1. Update `CHANGELOG.md` with version and date.
+1. Move release-ready notes out of `Unreleased` and leave `Unreleased` ready for the next cycle.
 1. Run `./scripts/run-tests.sh` locally.
 1. Confirm CI is green.
 1. Verify docs match released behavior.
-1. Create version tag (for example `v0.4.0`).
+1. Create version tag (for example `v0.6.0`).
 
 ## Publish
 

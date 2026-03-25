@@ -43,10 +43,15 @@ Quick checks:
 
 - Ensure `com.android.application` or `com.android.library` plugin is applied.
 - For version catalogs, verify plugin alias is one of supported Android forms.
+- In composite builds, verify the root `settings.gradle[.kts]` includes the
+  expected `includeBuild(...)` entries and each included build has its own
+  `settings.gradle[.kts]`.
 
 Fix:
 
 - Ensure `namespace` exists when relying on namespace detection.
+- If build-file scans look stale, reopen AndroidMenu or rerun an explicit Gradle
+  action so task/snapshot-based discovery can refresh module detection.
 
 ### Telescope Missing
 
@@ -64,16 +69,37 @@ Quick checks:
 
 - Confirm `run.config_path` points to valid JSON.
 - Confirm path is absolute or workspace-relative as intended.
+- If you use `.android.nvim.json`, validate the whole file: the same JSON may be
+  read for run configs, `app.package`, and `build.apk_overrides`.
+
+Fix:
+
+- Correct malformed JSON. The plugin warns once per broken file path with
+  `Invalid shared project config JSON in ... Check JSON syntax.`
 
 ### APK Not Found
 
 Quick checks:
 
 - Confirm selected variant was built.
+- Confirm any `build.apk_overrides` entry matches both module and variant.
 
 Fix:
 
 - Enable `build.scan_all_apk_outputs = true` for recursive output scan fallback.
+
+### Gradle Prefetch Warning
+
+Quick checks:
+
+- Read the warning text; it includes the first useful Gradle failure line.
+- Confirm `build.gradle_command` resolves correctly for this workspace.
+- Re-run the failing Gradle command manually if you need full output.
+
+Fix:
+
+- Fix the Gradle/workspace issue, then reopen AndroidMenu or rerun
+  `:AndroidGradleTasks` / `:AndroidBuildPrompt` to refresh prefetch data.
 
 ## Related Docs
 

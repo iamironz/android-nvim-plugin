@@ -9,6 +9,10 @@ Describe build entry points, what each one does, and how to use the build output
 `:AndroidBuild` uses saved module and variant, deploys to selected device or emulator,
 updates logcat package selection, and opens logcat when successful.
 
+Android module and variant discovery prefers cached Gradle snapshot/task data
+when available. In composite Gradle workspaces, included builds discovered via
+`includeBuild(...)` participate in module and task discovery.
+
 ## Build Entry Points
 
 | Entry Point | Default Shortcut | Use It When |
@@ -46,6 +50,41 @@ Filter syntax supports space-separated terms and `/regex/` patterns.
 
 - Kotlin/Java build errors are parsed into quickfix entries.
 - Use `Show build errors` from AndroidMenu to open the quickfix list.
+
+## Shared Project Overrides
+
+The shared `.android.nvim.json` file can pin build/deploy inputs when Gradle
+outputs are non-standard:
+
+```json
+{
+  "app": {
+    "package": "com.example.app"
+  },
+  "build": {
+    "apk_overrides": [
+      {
+        "module": ":app",
+        "variant": "debug",
+        "path": "artifacts/app-debug.apk"
+      }
+    ]
+  }
+}
+```
+
+- `build.apk_overrides` maps a module+variant to a specific APK path.
+- `app.package` provides the package name used by deploy/logcat flows when APK
+  or manifest-based detection is not the right source.
+
+## Prefetch Warnings
+
+AndroidMenu starts background Gradle prefetch for run configs, task counts, and
+variant data. If that Gradle fetch fails, the plugin shows a warning like
+`Gradle tasks failed (exit N): ...` instead of leaving discovery silently stuck.
+
+You can still rerun `:AndroidGradleTasks` or `:AndroidBuildPrompt` after fixing
+the Gradle command or workspace issue.
 
 ## Recommended Flow
 

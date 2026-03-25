@@ -6,6 +6,34 @@ The format is based on Keep a Changelog and this project adheres to SemVer.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-03-25
+
+### Added
+
+- Composite Gradle workspace support for `includeBuild(...)` discovery so
+  included builds contribute Android modules, run configs, variants, and
+  Gradle tasks.
+- Shared project config loading from `.android.nvim.json` for build APK
+  overrides and app package overrides.
+
+### Changed
+
+- Android run-config discovery now prefers Gradle snapshot and task metadata
+  before falling back to module build-file scans, which keeps Android module
+  detection more accurate in composite and cached workspaces.
+- Build module selection now syncs the active Android run config to the
+  matching module when possible while preserving explicitly selected non-Android
+  targets.
+- Menu prefetch now uses the same composite-aware Gradle task source as the
+  Gradle task action so task counts and available entries stay aligned.
+
+### Fixed
+
+- Gradle prefetch failures are now surfaced with actionable warning details
+  instead of failing silently behind loading states.
+- APK/package resolution now respects shared `.android.nvim.json` overrides
+  more consistently across build, deploy, and logcat flows.
+
 ## [0.5.1] - 2026-02-10
 
 ### Changed

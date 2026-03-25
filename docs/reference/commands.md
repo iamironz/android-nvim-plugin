@@ -28,7 +28,7 @@ For step-by-step usage, see [navigation guide](../guides/navigation.md),
 | `:AndroidLogcat` | Open logcat panel | `<Plug>(AndroidLogcat)` |
 | `:AndroidBuildPrompt` | Build Android with prompts | `<Plug>(AndroidBuildPrompt)` |
 | `:AndroidBuildAssemble` | Build Android assemble only | `<Plug>(AndroidBuildAssemble)` |
-| `:AndroidGradleTasks` | Open Gradle task picker | `<Plug>(AndroidGradleTasks)` |
+| `:AndroidGradleTasks` | Open composite-aware Gradle task picker | `<Plug>(AndroidGradleTasks)` |
 | `:AndroidIOSBuild` | Build iOS project | `<Plug>(AndroidIOSBuild)` |
 | `:AndroidIOSDeploy` | Deploy iOS project | `<Plug>(AndroidIOSDeploy)` |
 
@@ -53,8 +53,8 @@ target is incompatible.
 | Build Variants | Build with prompts | Pick module and variant before building |
 | Build Variants | iOS build | Requires iOS workspace |
 | Build Variants | iOS deploy | Requires iOS workspace and available simulator/device |
-| Build Variants | Gradle tasks | Browse and run Gradle tasks |
-| Build Variants | Select module | Set default Gradle module |
+| Build Variants | Gradle tasks | Browse and run composite-aware Gradle tasks |
+| Build Variants | Select module | Set default Gradle module and sync matching Android run config when active |
 | Build Variants | Select variant | Set default build variant |
 | Build Variants | Output APKs | List APKs and copy path |
 | Build Variants | Gradle clean | Run `clean` in workspace |
@@ -75,6 +75,8 @@ target is incompatible.
 1. Open the full hub: `:AndroidMenu`
 1. Run the selected config directly: `:AndroidRun`
 1. Build without deploy: `:AndroidBuildAssemble`
+1. Select a different Android module from `Build Variants` to keep Android build
+   defaults and the active Android run config aligned.
 1. Add a custom key for a direct command:
 
 ```lua
