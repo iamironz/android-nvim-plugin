@@ -43,8 +43,6 @@ local function run_filter_input_without_telescope(opts)
   picker.filter_input({
     items = { "one" },
     prompt_title = options.prompt_title or "Filter",
-    input_title = options.input_title,
-    input_prompt = options.input_prompt,
     default = "old",
     on_change = function(value) flags.on_change = value end,
     on_accept = function(value) flags.on_accept = value end,
@@ -60,8 +58,7 @@ local function run_filter_input_without_telescope(opts)
   return { captured = captured, flags = flags }
 end
 
-local function run_filter_input_without_floating_input(opts)
-  local options = opts or {}
+local function run_filter_input_without_floating_input()
   local flags = { on_change = false, on_accept = false, on_cancel = false }
   local captured = { prompt = nil, default = nil }
   local original_input = vim.ui and vim.ui.input
@@ -91,8 +88,6 @@ local function run_filter_input_without_floating_input(opts)
   picker.filter_input({
     items = { "one" },
     prompt_title = "Filter",
-    input_title = options.input_title or "Filter:",
-    input_prompt = options.input_prompt or "Filter: ",
     default = "old",
     on_change = function(value) flags.on_change = value end,
     on_accept = function(value) flags.on_accept = value end,
@@ -110,30 +105,11 @@ end
 
 local function filter_input_fallback_sets_title()
   local result = run_filter_input_without_telescope()
-  assert.eq(result.captured.title, "Filter", "input title")
-end
-
-local function filter_input_fallback_sets_prompt()
-  local result = run_filter_input_without_telescope()
-  assert.eq(result.captured.prompt, "Filter", "input prompt")
-end
-
-local function filter_input_fallback_uses_custom_prompt()
-  local result = run_filter_input_without_telescope({ input_prompt = "Filter: " })
-  assert.eq(result.captured.prompt, "Filter: ", "input prompt")
-end
-
-local function filter_input_fallback_omits_title_for_custom_prompt()
-  local result = run_filter_input_without_telescope({ input_prompt = "Filter: " })
-  assert.eq(result.captured.title, "", "input title")
-end
-
-local function filter_input_fallback_uses_custom_title()
-  local result = run_filter_input_without_telescope({
-    input_title = "Filter:",
-    input_prompt = "",
-  })
   assert.eq(result.captured.title, "Filter:", "input title")
+end
+
+local function filter_input_fallback_keeps_prompt_empty()
+  local result = run_filter_input_without_telescope()
   assert.eq(result.captured.prompt, "", "input prompt")
 end
 
@@ -163,26 +139,14 @@ local function filter_input_falls_back_to_vim_ui_input()
   assert.eq(result.flags.on_accept, "typed", "vim.ui.input accept")
 end
 
-local function filter_input_vim_ui_uses_title_when_prompt_empty()
-  local result = run_filter_input_without_floating_input({
-    input_title = "Filter:",
-    input_prompt = "",
-  })
-  assert.eq(result.captured.prompt, "Filter: ", "vim.ui.input prompt")
-end
-
 function M.run()
   filter_input_fallback_sets_title()
-  filter_input_fallback_sets_prompt()
-  filter_input_fallback_uses_custom_prompt()
-  filter_input_fallback_omits_title_for_custom_prompt()
-  filter_input_fallback_uses_custom_title()
+  filter_input_fallback_keeps_prompt_empty()
   filter_input_fallback_sets_default()
   filter_input_fallback_calls_on_change()
   filter_input_fallback_calls_on_accept()
   filter_input_fallback_calls_on_cancel()
   filter_input_falls_back_to_vim_ui_input()
-  filter_input_vim_ui_uses_title_when_prompt_empty()
 end
 
 return M
