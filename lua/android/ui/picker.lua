@@ -70,13 +70,46 @@ local function filter_results_by_query(results, format, query)
 end
 
 local function fallback_filter_input(options)
+  local title = options.prompt_title or "Filter"
+  local prompt = options.input_prompt
+  if prompt == nil then
+    prompt = title
+  end
+  local input_title = options.input_title
+  if input_title == nil then
+    input_title = options.input_prompt and "" or title
+  end
+  local ok_input, input = pcall(require, "android.ui.input")
+  if ok_input and input and type(input.prompt) == "function" then
+    input.prompt({
+      title = input_title,
+      prompt = prompt,
+      default = options.default or "",
+      on_change = options.on_change,
+      on_submit = function(value)
+        if options.on_change then
+          options.on_change(value)
+        end
+        if options.on_accept then
+          options.on_accept(value)
+        end
+      end,
+      on_cancel = options.on_cancel,
+    })
+    return
+  end
+
   if not vim.ui or not vim.ui.input then
     vim.notify("vim.ui.input not available", vim.log.levels.WARN)
     return
   end
 
+  local fallback_prompt = prompt
+  if fallback_prompt == "" and input_title and input_title ~= "" then
+    fallback_prompt = input_title .. " "
+  end
   vim.ui.input({
-    prompt = options.prompt_title or "Filter",
+    prompt = fallback_prompt,
     default = options.default or "",
   }, function(value)
     if value == nil then

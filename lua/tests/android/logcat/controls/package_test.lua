@@ -189,15 +189,16 @@ local function header_enter_prompts_for_package_and_filter_modal()
     logcat_helpers.press_enter(ctx, 2)
 
     local call = ctx.vim_state.input_calls[1] or {}
-    local prompt = input_calls[1] and input_calls[1].prompt_title or ""
+    local filter_call = input_calls[1] or {}
     local summary = string.format(
-      "%d|%s|%d|%s",
+      "%d|%s|%d|%s|%s",
       #ctx.vim_state.input_calls,
       call.prompt or "",
       #input_calls,
-      prompt
+      filter_call.prompt_title or "",
+      filter_call.input_title or ""
     )
-    assert.eq(summary, "1|Logcat package: |1|Logcat filter", "header enter")
+    assert.eq(summary, "1|Logcat package: |1|Logcat filter|Logcat filter:", "header enter")
   end)
 end
 
