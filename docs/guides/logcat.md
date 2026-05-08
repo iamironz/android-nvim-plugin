@@ -33,7 +33,7 @@ Logcat uses a two-layer bottom dock:
 
 | Key | Action |
 | --- | --- |
-| `q` | Close logcat panel |
+| `q`, `<Esc>` | Close logcat panel |
 | `c` | Clear panel output |
 | `C` | Clear output and reset pause state |
 | `p` | Pause or resume output |

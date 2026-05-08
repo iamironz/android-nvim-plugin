@@ -133,6 +133,37 @@ local function start_build_job_registers_filter_keymap()
   )
 end
 
+local function start_build_job_registers_close_keymaps()
+  local outcome = build_stream_helper.run_filter_build()
+
+  assert.is_true(
+    outcome.keymaps and outcome.keymaps["n"]["q"],
+    "q close keymap"
+  )
+  assert.is_true(
+    outcome.keymaps and outcome.keymaps["n"]["<Esc>"],
+    "esc close keymap"
+  )
+end
+
+local function close_keymap_closes_panel(lhs)
+  local outcome = build_stream_helper.run_filter_build({
+    after_start = function(state)
+      state.keymaps["n"][lhs]()
+    end,
+  })
+
+  assert.eq(outcome.panel.closed, true, lhs .. " closes panel")
+end
+
+local function q_keymap_closes_panel()
+  close_keymap_closes_panel("q")
+end
+
+local function esc_keymap_closes_panel()
+  close_keymap_closes_panel("<Esc>")
+end
+
 local function run_filter_input(options)
   local opts = options or {}
   local state = opts.state
@@ -303,6 +334,9 @@ function M.run()
   start_build_job_reports_lines()
   start_build_job_sets_header()
   start_build_job_registers_filter_keymap()
+  start_build_job_registers_close_keymaps()
+  q_keymap_closes_panel()
+  esc_keymap_closes_panel()
   filter_keymap_opens_modal()
   filter_input_updates_header()
   filter_input_tracks_body_updates()

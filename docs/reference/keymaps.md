@@ -65,7 +65,7 @@ vim.keymap.set("n", "<leader>ar", "<Plug>(AndroidRun)", { remap = true, silent =
 
 | Key | Action |
 | --- | --- |
-| `q` | Close panel |
+| `q`, `<Esc>` | Close panel |
 | `c` | Clear output |
 | `C` | Clear output and reset pause |
 | `p` | Pause or resume stream |
@@ -80,6 +80,7 @@ vim.keymap.set("n", "<leader>ar", "<Plug>(AndroidRun)", { remap = true, silent =
 
 | Key | Action |
 | --- | --- |
+| `q`, `<Esc>` | Close panel |
 | `f` | Edit build filter |
 | `<CR>` | On control strip row, open filter edit |
 

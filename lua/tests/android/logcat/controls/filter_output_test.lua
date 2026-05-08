@@ -153,15 +153,23 @@ local function filter_change_rebuilds_body_from_raw_lines()
   end)
 end
 
-local function stopped_session_ignores_late_output()
+local function close_keymap_stops_session(lhs)
   with_filter_output_context(function(ctx, filter_calls, job_callbacks, appended)
-    ctx.vim_state.keymaps["n"]["q"]()
+    ctx.vim_state.keymaps["n"][lhs]()
 
     job_callbacks.on_stdout({ "late line" })
 
-    assert.eq(filter_calls.count, 0, "stopped session ignores filter")
-    assert.eq(appended.lines, nil, "stopped session ignores append")
+    assert.eq(filter_calls.count, 0, lhs .. " stopped session ignores filter")
+    assert.eq(appended.lines, nil, lhs .. " stopped session ignores append")
   end)
+end
+
+local function q_stops_session_ignores_late_output()
+  close_keymap_stops_session("q")
+end
+
+local function esc_stops_session_ignores_late_output()
+  close_keymap_stops_session("<Esc>")
 end
 
 function M.run()
@@ -170,7 +178,8 @@ function M.run()
   handle_output_filters_lines_filter_arg()
   handle_output_appends_filtered_lines()
   filter_change_rebuilds_body_from_raw_lines()
-  stopped_session_ignores_late_output()
+  q_stops_session_ignores_late_output()
+  esc_stops_session_ignores_late_output()
 end
 
 return M
