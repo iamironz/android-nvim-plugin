@@ -7,6 +7,12 @@ local LEVEL_GROUPS = {
   I = "AndroidLogcatInfo",
   D = "AndroidLogcatDebug",
 }
+local HIGHLIGHT_LINKS = {
+  { group = "AndroidLogcatError", link = "DiagnosticError" },
+  { group = "AndroidLogcatWarn", link = "DiagnosticWarn" },
+  { group = "AndroidLogcatInfo", link = "DiagnosticInfo" },
+  { group = "AndroidLogcatDebug", link = "DiagnosticHint" },
+}
 
 local function detect_level(line)
   if type(line) ~= "string" then
@@ -16,10 +22,12 @@ local function detect_level(line)
 end
 
 function M.setup()
-  vim.api.nvim_set_hl(0, "AndroidLogcatError", { fg = "Red" })
-  vim.api.nvim_set_hl(0, "AndroidLogcatWarn", { fg = "Yellow" })
-  vim.api.nvim_set_hl(0, "AndroidLogcatInfo", { fg = "Blue" })
-  vim.api.nvim_set_hl(0, "AndroidLogcatDebug", { fg = "Green" })
+  for _, highlight_link in ipairs(HIGHLIGHT_LINKS) do
+    vim.api.nvim_set_hl(0, highlight_link.group, {
+      default = true,
+      link = highlight_link.link,
+    })
+  end
 end
 
 function M.clear(buf)
