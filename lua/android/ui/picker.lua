@@ -75,48 +75,19 @@ local function fallback_filter_input(options)
   if label:sub(-1) ~= ":" then
     label = label .. ":"
   end
-  local ok_input, input = pcall(require, "android.ui.input")
-  if ok_input and input and type(input.prompt) == "function" then
-    input.prompt({
-      title = label,
-      prompt = "",
-      default = options.default or "",
-      on_change = options.on_change,
-      on_submit = function(value)
-        if options.on_change then
-          options.on_change(value)
-        end
-        if options.on_accept then
-          options.on_accept(value)
-        end
-      end,
-      on_cancel = options.on_cancel,
-    })
-    return
-  end
-
-  if not vim.ui or not vim.ui.input then
-    vim.notify("vim.ui.input not available", vim.log.levels.WARN)
-    return
-  end
-
-  vim.ui.input({
-    prompt = label .. " ",
+  local input = require("android.ui.input")
+  input.prompt({
+    title = label,
+    prompt = "",
     default = options.default or "",
-  }, function(value)
-    if value == nil then
-      if options.on_cancel then
-        options.on_cancel()
+    on_change = options.on_change,
+    on_submit = function(value)
+      if options.on_accept then
+        options.on_accept(value)
       end
-      return
-    end
-    if options.on_change then
-      options.on_change(value)
-    end
-    if options.on_accept then
-      options.on_accept(value)
-    end
-  end)
+    end,
+    on_cancel = options.on_cancel,
+  })
 end
 
 local function set_buffer_name(buf, name)

@@ -1,5 +1,7 @@
 local M = {}
 
+-- Wide enough for common tag, package, and short message filters without a
+-- config knob for one prompt helper.
 local MIN_WIDTH = 56
 
 local function display_width(value)
@@ -7,14 +9,7 @@ local function display_width(value)
     return 0
   end
 
-  if vim.fn and vim.fn.strdisplaywidth then
-    local ok, width = pcall(vim.fn.strdisplaywidth, value)
-    if ok and type(width) == "number" then
-      return width
-    end
-  end
-
-  return #value
+  return vim.fn.strdisplaywidth(value)
 end
 
 local function calc_width(prompt, default, title)

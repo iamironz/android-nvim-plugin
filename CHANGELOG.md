@@ -9,8 +9,8 @@ The format is based on Keep a Changelog and this project adheres to SemVer.
 ### Changed
 
 - Filter inputs now use the plugin's live-updating floating prompt when
-  Telescope is unavailable, and the logcat filter fallback now labels the
-  floating input as `Logcat filter:`.
+  Telescope is unavailable, with the floating prompt label derived from each
+  filter's existing prompt title.
 
 ## [0.6.0] - 2026-03-25
 
