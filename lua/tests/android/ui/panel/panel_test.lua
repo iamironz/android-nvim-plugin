@@ -78,6 +78,18 @@ local function open_dock_sets_winfixbuf_for_body_and_control_windows()
   end)
 end
 
+local function open_dock_sets_winfixheight_for_body_and_control_windows()
+  panel_vim.with_panel_module(
+    { on_cmd = panel_vim.on_split_create_window },
+    function(panel, api_state)
+      panel.open({ layout = "dock", control_height = 1 })
+
+      assert.eq(api_state.win_options[100].winfixheight, true, "body winfixheight")
+      assert.eq(api_state.win_options[101].winfixheight, true, "control winfixheight")
+    end
+  )
+end
+
 local function open_dock_preserve_focus_keeps_origin_window_selected()
   panel_vim.with_panel_module(
     { on_cmd = panel_vim.on_split_create_window },
@@ -207,6 +219,7 @@ function M.run()
   open_creates_split_window_and_configures_buffer()
   open_sets_winfixbuf_for_inline_window()
   open_dock_sets_winfixbuf_for_body_and_control_windows()
+  open_dock_sets_winfixheight_for_body_and_control_windows()
   open_dock_preserve_focus_keeps_origin_window_selected()
   open_dock_closes_stale_android_windows_before_creating_new_pair()
   append_adds_lines_to_open_buffer()

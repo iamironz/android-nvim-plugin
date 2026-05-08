@@ -256,6 +256,7 @@ local function setup_keymaps(session, deps)
     end
   end
   map("q", function() session.on_close() end)
+  map("<Esc>", function() session.on_close() end)
   map("c", function() clear_panel(session) end)
   map("C", function() reset_output(session) end)
   map("p", function() toggle_pause(session) end)

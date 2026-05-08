@@ -175,6 +175,12 @@ local function setup_keymaps(session)
     end
   end
 
+  map("q", function()
+    panel.close()
+  end)
+  map("<Esc>", function()
+    panel.close()
+  end)
   map("f", function()
     start_filter_edit(session)
   end)

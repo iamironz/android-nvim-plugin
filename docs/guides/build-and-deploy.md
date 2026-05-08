@@ -41,6 +41,7 @@ Build output is a two-layer bottom dock:
 
 | Key | Action |
 | --- | --- |
+| `q`, `<Esc>` | Close build output panel |
 | `f` | Edit build filter text |
 | `<CR>` | On filter row, open filter edit |
 

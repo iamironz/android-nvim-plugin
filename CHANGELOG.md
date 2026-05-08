@@ -6,6 +6,12 @@ The format is based on Keep a Changelog and this project adheres to SemVer.
 
 ## [Unreleased]
 
+### Changed
+
+- Build and logcat dock panels now support consistent `q` / `<Esc>` close
+  controls, and dock body windows keep a fixed height when additional splits
+  are opened.
+
 ## [0.6.0] - 2026-03-25
 
 ### Added

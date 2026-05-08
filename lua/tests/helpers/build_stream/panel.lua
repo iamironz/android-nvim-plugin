@@ -14,6 +14,7 @@ function M.make_panel_state()
     replaced_body_history = {},
     names = nil,
     name_history = {},
+    closed = false,
   }
 end
 
@@ -93,6 +94,10 @@ function M.make_panel_stub(panel_state, vim_state)
       }
       panel_state.names = snapshot
       panel_state.name_history[#panel_state.name_history + 1] = snapshot
+    end,
+    close = function()
+      panel_state.closed = true
+      return true
     end,
   }
 end
