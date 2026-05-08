@@ -157,6 +157,23 @@ local function filter_picker_receives_history()
   end)
 end
 
+local function filter_picker_receives_prompt_text()
+  local state = state_with("com.saved", "Old")
+  local captured = {}
+  local stubs = {
+    ["android.ui.picker"] = {
+      filter_input = function(opts)
+        captured.prompt_title = opts.prompt_title
+      end,
+    },
+  }
+
+  logcat_helpers.with_logcat_context({ state = state, stubs = stubs }, function(ctx)
+    logcat_helpers.start_filter_edit(ctx)
+    assert.eq(captured.prompt_title, "Logcat filter", "prompt title")
+  end)
+end
+
 local function filter_history_persists()
   local state = logcat_helpers.build_state({
     logcat = { package = "com.saved", filter = "Old", filter_history = { "old" } },
@@ -209,6 +226,7 @@ function M.run()
   header_rerenders_after_filter_input()
   filter_input_cancel_keeps_latest()
   filter_picker_receives_history()
+  filter_picker_receives_prompt_text()
   filter_history_persists()
   filter_history_persists_on_cancel()
 end

@@ -2,46 +2,72 @@ local M = {}
 
 local assert = require("tests.helpers.assert")
 
-local function run_filter_input_without_telescope()
-  local flags = { on_change = false, on_accept = false, on_cancel = false }
-  local captured = { prompt = nil, default = nil }
+local function run_filter_input_without_telescope(opts)
+  local options = opts or {}
+  local flags = { on_change = {}, on_accept = false, on_cancel = false }
+  local captured = { title = nil, prompt = nil, default = nil }
   local original_input = vim.ui and vim.ui.input
   local original_preload = package.preload["telescope.pickers"]
   local original_loaded = package.loaded["telescope.pickers"]
+  local original_android_preload = package.preload["android.ui.input"]
+  local original_android_input = package.loaded["android.ui.input"]
 
   package.preload["telescope.pickers"] = function()
     error("missing telescope.pickers")
   end
   package.loaded["telescope.pickers"] = nil
 
+  package.loaded["android.ui.input"] = {
+    prompt = function(input_opts)
+      captured.title = input_opts.title
+      captured.prompt = input_opts.prompt
+      captured.default = input_opts.default
+      if options.cancel then
+        input_opts.on_cancel()
+        return
+      end
+      if input_opts.on_change then
+        input_opts.on_change("live")
+      end
+      input_opts.on_submit("typed")
+    end,
+  }
+
   vim.ui = vim.ui or {}
-  vim.ui.input = function(opts, cb)
-    captured.prompt = opts.prompt
-    captured.default = opts.default
-    cb("typed")
+  vim.ui.input = function()
+    error("vim.ui.input should not be used when floating input is available")
   end
 
   package.loaded["android.ui.picker"] = nil
   local picker = require("android.ui.picker")
   picker.filter_input({
     items = { "one" },
-    prompt_title = "Filter",
+    prompt_title = options.prompt_title or "Filter",
     default = "old",
-    on_change = function(value) flags.on_change = value end,
+    on_change = function(value)
+      flags.on_change[#flags.on_change + 1] = value
+    end,
     on_accept = function(value) flags.on_accept = value end,
     on_cancel = function() flags.on_cancel = true end,
   })
 
-  vim.ui.input = original_input
   package.preload["telescope.pickers"] = original_preload
   package.loaded["telescope.pickers"] = original_loaded
+  package.preload["android.ui.input"] = original_android_preload
+  package.loaded["android.ui.input"] = original_android_input
+  vim.ui.input = original_input
 
   return { captured = captured, flags = flags }
 end
 
-local function filter_input_fallback_sets_prompt()
+local function filter_input_fallback_sets_title()
   local result = run_filter_input_without_telescope()
-  assert.eq(result.captured.prompt, "Filter", "input prompt")
+  assert.eq(result.captured.title, "Filter:", "input title")
+end
+
+local function filter_input_fallback_keeps_prompt_empty()
+  local result = run_filter_input_without_telescope()
+  assert.eq(result.captured.prompt, "", "input prompt")
 end
 
 local function filter_input_fallback_sets_default()
@@ -51,7 +77,7 @@ end
 
 local function filter_input_fallback_calls_on_change()
   local result = run_filter_input_without_telescope()
-  assert.eq(result.flags.on_change, "typed", "on_change called")
+  assert.table_eq(result.flags.on_change, { "live" }, "on_change called once")
 end
 
 local function filter_input_fallback_calls_on_accept()
@@ -59,17 +85,18 @@ local function filter_input_fallback_calls_on_accept()
   assert.eq(result.flags.on_accept, "typed", "on_accept called")
 end
 
-local function filter_input_fallback_does_not_call_on_cancel()
-  local result = run_filter_input_without_telescope()
-  assert.eq(result.flags.on_cancel, false, "on_cancel not called")
+local function filter_input_fallback_calls_on_cancel()
+  local result = run_filter_input_without_telescope({ cancel = true })
+  assert.eq(result.flags.on_cancel, true, "on_cancel called")
 end
 
 function M.run()
-  filter_input_fallback_sets_prompt()
+  filter_input_fallback_sets_title()
+  filter_input_fallback_keeps_prompt_empty()
   filter_input_fallback_sets_default()
   filter_input_fallback_calls_on_change()
   filter_input_fallback_calls_on_accept()
-  filter_input_fallback_does_not_call_on_cancel()
+  filter_input_fallback_calls_on_cancel()
 end
 
 return M

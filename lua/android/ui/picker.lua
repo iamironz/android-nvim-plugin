@@ -70,28 +70,24 @@ local function filter_results_by_query(results, format, query)
 end
 
 local function fallback_filter_input(options)
-  if not vim.ui or not vim.ui.input then
-    vim.notify("vim.ui.input not available", vim.log.levels.WARN)
-    return
+  local title = options.prompt_title or "Filter"
+  local label = title
+  if label:sub(-1) ~= ":" then
+    label = label .. ":"
   end
-
-  vim.ui.input({
-    prompt = options.prompt_title or "Filter",
+  local input = require("android.ui.input")
+  input.prompt({
+    title = label,
+    prompt = "",
     default = options.default or "",
-  }, function(value)
-    if value == nil then
-      if options.on_cancel then
-        options.on_cancel()
+    on_change = options.on_change,
+    on_submit = function(value)
+      if options.on_accept then
+        options.on_accept(value)
       end
-      return
-    end
-    if options.on_change then
-      options.on_change(value)
-    end
-    if options.on_accept then
-      options.on_accept(value)
-    end
-  end)
+    end,
+    on_cancel = options.on_cancel,
+  })
 end
 
 local function set_buffer_name(buf, name)
