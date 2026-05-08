@@ -28,6 +28,7 @@ local function with_input(lines, run)
     autocmd = nil,
     callbacks = {},
     commands = {},
+    open_opts = nil,
   }
 
   save(vim, "o")
@@ -68,7 +69,10 @@ local function with_input(lines, run)
   vim.api.nvim_create_buf = function() return 1 end
 
   save(vim.api, "nvim_open_win")
-  vim.api.nvim_open_win = function() return 2 end
+  vim.api.nvim_open_win = function(_, _, opts)
+    state.open_opts = opts
+    return 2
+  end
 
   save(vim.api, "nvim_win_is_valid")
   vim.api.nvim_win_is_valid = function() return true end
@@ -142,10 +146,34 @@ local function startinsert_uses_append_mode()
   end)
 end
 
+local function uses_wider_default_width()
+  with_input({ "" }, function(input, state)
+    input.prompt({
+      title = "Logcat filter:",
+    })
+
+    assert.eq(state.open_opts.width, 56, "default width")
+  end)
+end
+
+local function clamps_width_to_editor()
+  with_input({ "" }, function(input, state)
+    vim.o.columns = 40
+
+    input.prompt({
+      title = "Logcat filter:",
+    })
+
+    assert.eq(state.open_opts.width, 36, "clamped width")
+  end)
+end
+
 function M.run()
   on_change_strips_prompt_prefix()
   on_change_skips_empty_prompt()
   startinsert_uses_append_mode()
+  uses_wider_default_width()
+  clamps_width_to_editor()
 end
 
 return M

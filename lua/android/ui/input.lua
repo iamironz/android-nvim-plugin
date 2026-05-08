@@ -1,7 +1,26 @@
 local M = {}
 
-local function calc_width(prompt, default)
-  local base = math.max(#prompt + #default + 4, 24)
+local MIN_WIDTH = 56
+
+local function display_width(value)
+  if not value or value == "" then
+    return 0
+  end
+
+  if vim.fn and vim.fn.strdisplaywidth then
+    local ok, width = pcall(vim.fn.strdisplaywidth, value)
+    if ok and type(width) == "number" then
+      return width
+    end
+  end
+
+  return #value
+end
+
+local function calc_width(prompt, default, title)
+  local content_width = display_width(prompt) + display_width(default)
+  local title_width = display_width(title)
+  local base = math.max(content_width + 4, title_width + 4, MIN_WIDTH)
   local max = math.max(20, vim.o.columns - 4)
   return math.min(base, max)
 end
@@ -43,7 +62,7 @@ function M.prompt(opts)
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, { default })
   end
 
-  local width = calc_width(prompt, default)
+  local width = calc_width(prompt, default, title)
   local height = 1
   local row, col = center_position(width, height)
   local win = vim.api.nvim_open_win(buf, true, {
