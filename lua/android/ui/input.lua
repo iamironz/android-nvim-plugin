@@ -118,7 +118,7 @@ function M.prompt(opts)
     })
   end
 
-  vim.cmd("startinsert")
+  vim.cmd("startinsert!")
 end
 
 return M

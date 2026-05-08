@@ -27,6 +27,7 @@ local function with_input(lines, run)
   local state = {
     autocmd = nil,
     callbacks = {},
+    commands = {},
   }
 
   save(vim, "o")
@@ -44,7 +45,9 @@ local function with_input(lines, run)
   })
 
   save(vim, "cmd")
-  vim.cmd = function() end
+  vim.cmd = function(cmd)
+    state.commands[#state.commands + 1] = cmd
+  end
 
   save(vim, "keymap")
   vim.keymap = vim.keymap or {}
@@ -129,9 +132,20 @@ local function on_change_skips_empty_prompt()
   end)
 end
 
+local function startinsert_uses_append_mode()
+  with_input({ "old" }, function(input, state)
+    input.prompt({
+      default = "old",
+    })
+
+    assert.eq(state.commands[#state.commands], "startinsert!", "appends at end")
+  end)
+end
+
 function M.run()
   on_change_strips_prompt_prefix()
   on_change_skips_empty_prompt()
+  startinsert_uses_append_mode()
 end
 
 return M
