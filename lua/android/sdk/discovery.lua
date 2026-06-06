@@ -288,7 +288,7 @@ function M.new(opts)
   local config = opts and opts.config or nil
   local root = opts and opts.root or nil
   local cwd = opts and opts.cwd or nil
-  local os_name = opts and opts.os_name or nil
+  local os_name = opts and opts.os_name or vim.loop.os_uname().sysname
   local home = opts and opts.home or nil
   local discovery = {}
 

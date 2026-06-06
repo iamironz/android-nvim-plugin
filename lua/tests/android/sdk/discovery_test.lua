@@ -153,6 +153,34 @@ local function locates_sdk_tools_on_windows()
   assert.eq(tools.adb, "C:/Sdk/platform-tools/adb.exe", "adb windows")
 end
 
+local function auto_detects_windows_tool_extensions()
+  local original_uname = vim.loop.os_uname
+  vim.loop.os_uname = function()
+    return { sysname = "Windows_NT" }
+  end
+
+  local store = require("android.state.store").new()
+  local discovery = require("android.sdk.discovery").new({
+    env = { ANDROID_SDK_ROOT = "C:/Sdk" },
+    exists = function(path)
+      local matches = {
+        ["C:/Sdk"] = true,
+        ["C:/Sdk/cmdline-tools/latest/bin/sdkmanager.bat"] = true,
+        ["C:/Sdk/cmdline-tools/latest/bin/avdmanager.bat"] = true,
+        ["C:/Sdk/emulator/emulator.exe"] = true,
+        ["C:/Sdk/platform-tools/adb.exe"] = true,
+      }
+      return matches[path] or false
+    end,
+    store = store,
+  })
+
+  local tools = discovery.tools()
+  assert.eq(tools.adb, "C:/Sdk/platform-tools/adb.exe", "auto-detected adb windows")
+
+  vim.loop.os_uname = original_uname
+end
+
 local function falls_back_to_tools_bin()
   local store = require("android.state.store").new()
   local discovery = require("android.sdk.discovery").new({
@@ -236,6 +264,7 @@ function M.run()
   uses_default_sdk_candidates()
   locates_sdk_tools()
   locates_sdk_tools_on_windows()
+  auto_detects_windows_tool_extensions()
   falls_back_to_cmdline_tools_bin()
   falls_back_to_tools_bin()
   locates_aapt2_from_build_tools()
